@@ -5,6 +5,7 @@ use jsonwebtoken::{encode, EncodingKey, Header};
 use chrono::{Utc, Duration};
 use crate::openai_methods::get_text::handle_conversation;
 use crate::api::auth::{verify_token, Claims};
+use super::nft_claim::{handle_nft_claim_post, handle_nft_claim_get};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Post {
@@ -35,7 +36,7 @@ pub async fn protected_api(
     req: HttpRequest, 
     post: web::Json<Post>
 ) -> impl Responder {
-    if let Err(response) = verify_token(req).await {
+    if let Err(response) = verify_token(&req).await {
         return response;
     }
 
@@ -196,5 +197,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         web::scope("")
             .route("/login", web::post().to(login))
             .route("/api", web::post().to(protected_api))
+            .route("/nft-claim", web::post().to(handle_nft_claim_post))
+            .route("/nft-claim", web::get().to(handle_nft_claim_get))
     );
 }

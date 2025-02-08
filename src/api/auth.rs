@@ -19,20 +19,36 @@ fn validate_token(token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
     Ok(token_data.claims)
 }
 
-// Middleware to verify the JWT
-pub async fn verify_token(req: HttpRequest) -> Result<Claims, HttpResponse> {
-    let auth_header = req.headers()
-        .get("Authorization")
-        .and_then(|h| h.to_str().ok());
+pub async fn verify_token(req: &HttpRequest) -> Result<Claims, HttpResponse> {
+    let auth_header = match req.headers().get("Authorization") {
+        Some(header) => header,
+        None => return Err(HttpResponse::Unauthorized().body("No authorization header")),
+    };
 
-    match auth_header {
-        Some(auth_str) if auth_str.starts_with("Bearer ") => {
-            let token = &auth_str[7..];
-            match validate_token(token) {
-                Ok(claims) => Ok(claims),
-                Err(_) => Err(HttpResponse::Unauthorized().json("Invalid token"))
-            }
-        },
-        _ => Err(HttpResponse::Unauthorized().json("Token not provided"))
+    let auth_str = match auth_header.to_str() {
+        Ok(str) => str,
+        Err(_) => return Err(HttpResponse::Unauthorized().body("Invalid authorization header")),
+    };
+
+    if !auth_str.starts_with("Bearer ") {
+        return Err(HttpResponse::Unauthorized().body("Invalid token format"));
     }
+
+    let token = &auth_str[7..];
+
+    let jwt_secret = match env::var("JWT_SECRET") {
+        Ok(secret) => secret,
+        Err(_) => return Err(HttpResponse::InternalServerError().body("JWT_SECRET not found")),
+    };
+
+    let token_data = match decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(jwt_secret.as_bytes()),
+        &Validation::default(),
+    ) {
+        Ok(data) => data,
+        Err(_) => return Err(HttpResponse::Unauthorized().body("Invalid token")),
+    };
+
+    Ok(token_data.claims)
 }
