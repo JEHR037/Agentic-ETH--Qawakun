@@ -81,11 +81,8 @@ impl Auth {
             
             match Self::get_custody_address_by_fid(892331, &session_token).await {
                 Ok(custody_address) => {
-                    let wallet_clean = wallet_address.to_string().to_lowercase().trim_start_matches("0x").to_string();
-                    let custody_clean = custody_address.to_lowercase().trim_start_matches("0x").to_string();
-                    if wallet_clean != custody_clean {
-                        println!("⚠️ Wallet no coincide con custody address registrada");
-                    }
+                    let _wallet_clean = wallet_address.to_string().to_lowercase().trim_start_matches("0x").to_string();
+                    let _custody_clean = custody_address.to_lowercase().trim_start_matches("0x").to_string();
                 },
                 Err(_) => println!("⚠️ No se pudo verificar custody address")
             }
