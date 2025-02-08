@@ -33,6 +33,6 @@ pub async fn start_streams(client: TwitterClient) -> Result<(), Box<dyn Error + 
             Err(e) => println!("❌ Error getting mentions: {}", e)
         }
         
-        sleep(Duration::from_secs(60)).await;
+        sleep(Duration::from_secs(15*60 + 1)).await;
     }
 }
