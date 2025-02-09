@@ -19,11 +19,14 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
   const [messageCount, setMessageCount] = useState(0);
   const [messageHistory, setMessageHistory] = useState<string[]>([]);
   const [hasClaimed, setHasClaimed] = useState(false);
+  const [isClaimLoading, setIsClaimLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   
   const { data: session } = useSession();
   const { address, isConnected } = useAccount();
   
   const author = session?.user?.fid || address || "anonymous";
+  const isAuthenticated = !!session || isConnected;
 
   useEffect(() => {
     const load = async () => {
@@ -116,16 +119,19 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
   };
 
   const handleNFTClaim = async () => {
-    if (!session || messageCount < 6) return;
+    if (!isAuthenticated || messageCount < 6 || isClaimLoading) return;
 
     try {
+      setIsClaimLoading(true);
+      setApiResponse("Minting your NFT... This may take a minute.");
+
       const response = await fetch("/api/nft-claim", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          fid: session.user.fid || 0,
+          fid: session?.user?.fid || 0,
           wallet: address || '',
           message_count: messageCount,
           message_history: messageHistory,
@@ -147,11 +153,14 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
       }
       
       setHasClaimed(true);
+      setShowSuccessModal(true);
       setApiResponse("Congratulations! You have obtained your Qawakun. Take care of it and stay connected to the Ankanet!");
       handleReset();
     } catch (error) {
       console.error("Error claiming NFT:", error);
       setApiResponse("Error claiming NFT. Please try again.");
+    } finally {
+      setIsClaimLoading(false);
     }
   };
 
@@ -170,8 +179,6 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
   if (!isSDKLoaded) {
     return <div>Loading...</div>;
   }
-
-  const isAuthenticated = !!session || isConnected;
 
   return (
     <div 
@@ -215,16 +222,47 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
                        transition-all duration-200
                        shadow-lg shadow-[#f8d54b]/20
                        border border-[#f8d54b]/10
-                       disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={!session || messageCount < 6}
+                       disabled:opacity-50 disabled:cursor-not-allowed
+                       relative"
+              disabled={!isAuthenticated || messageCount < 6 || isClaimLoading}
             >
-              {messageCount < 6 
-                ? `Chat more (${messageCount}/6)` 
-                : "CLAIM YOUR CUSTOM NFT"}
+              {isClaimLoading ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#1a1812] mr-2"></div>
+                  Minting...
+                </div>
+              ) : (
+                messageCount < 6 
+                  ? `Chat more (${messageCount}/6)` 
+                  : "CLAIM YOUR CUSTOM NFT"
+              )}
             </Button>
           )}
         </div>
       </div>
+
+      {/* Modal de éxito */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
+          <div className="bg-gradient-to-b from-[#5d490d] to-[#040404] p-6 rounded-3xl 
+                        shadow-2xl border border-[#f8c20b] max-w-sm w-full text-center">
+            <h2 className="text-2xl font-bold text-[#f8c20b] mb-4">
+              ¡Congratulations!
+            </h2>
+            <p className="text-[#f8c20b]/90 mb-6">
+              You have successfully claimed your Qawakun NFT! 
+              Take care of it and stay connected to the Ankanet.
+            </p>
+            <Button
+              onClick={() => setShowSuccessModal(false)}
+              className="bg-[#f8c20b] text-[#040404] px-8 py-2 rounded-lg
+                       hover:bg-[#f8c20b]/90 transition-colors"
+            >
+              Close
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
