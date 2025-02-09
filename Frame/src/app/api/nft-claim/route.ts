@@ -1,51 +1,95 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getAuthToken } from '../utils/auth';
+import { cookies } from 'next/headers';
 
-export async function POST(request: NextRequest) {
+const BACKEND_URL = 'http://localhost:8080';
+
+export async function GET(request: NextRequest) {
   try {
-    const body = await request.json();
-    const token = process.env.NEXT_PUBLIC_BEARER_TOKEN;
-    
-    console.log('NFT Claim Request:', body);
+    const token = await getAuthToken();
+    const wallet = request.headers.get('wallet');
 
-    const response = await fetch('http://localhost:8080/nft-claim', {
-      method: 'POST',
+    if (!wallet) {
+      return NextResponse.json(
+        { error: 'Wallet address required' },
+        { status: 400 }
+      );
+    }
+
+    const response = await fetch(`${BACKEND_URL}/nft-claim`, {
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
+        'wallet': wallet
+      }
     });
 
-    const responseData = await response.text();
-    console.log('NFT Claim Response:', responseData);
+    if (response.status === 401) {
+      const cookieStore = await cookies();
+      cookieStore.delete('auth_token');
+      return GET(request);
+    }
 
-    return NextResponse.json({ message: responseData });
+    const data = await response.text();
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: 'Failed to check NFT status' },
+        { status: response.status }
+      );
+    }
+
+    return NextResponse.json(JSON.parse(data));
   } catch (error) {
-    console.error('NFT Claim Error:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error', details: error.message },
+      { error: 'Internal Server Error' },
       { status: 500 }
     );
   }
 }
 
-export async function GET() {
+export async function POST(request: NextRequest) {
   try {
-    const token = process.env.NEXT_PUBLIC_BEARER_TOKEN;
-    
-    const response = await fetch('http://localhost:8080/nft-claims', {
+    const token = await getAuthToken();
+    const claimData = await request.json();
+
+    const response = await fetch(`${BACKEND_URL}/nft-claim`, {
+      method: 'POST',
       headers: {
+        'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
+      body: JSON.stringify(claimData),
     });
 
-    const data = await response.json();
-    return NextResponse.json(data);
+    const responseText = await response.text();
+
+    if (response.status === 401) {
+      const cookieStore = await cookies();
+      cookieStore.delete('auth_token');
+      return POST(request);
+    }
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: 'Claim failed', message: responseText },
+        { status: response.status }
+      );
+    }
+
+    try {
+      const data = JSON.parse(responseText);
+      return NextResponse.json(data);
+    } catch {
+      return NextResponse.json({ 
+        message: responseText.replace(/^"|"$/g, '').trim()
+      });
+    }
+
   } catch (error) {
-    console.error('Get Claims Error:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error' },
+      { error: 'Internal Server Error', message: error.message },
       { status: 500 }
     );
   }
