@@ -38,13 +38,15 @@ export async function getAuthToken() {
       const data = JSON.parse(responseText);
       token = data.token;
       
-      const newCookieStore = await cookies();
-      newCookieStore.set('auth_token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 3600
-      });
+      if (token) {
+        const newCookieStore = await cookies();
+        newCookieStore.set('auth_token', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 3600
+        });
+      }
     } catch (error) {
       throw error;
     }

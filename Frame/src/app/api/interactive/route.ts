@@ -46,10 +46,12 @@ export async function POST(request: NextRequest) {
       message: cleanMessage
     });
 
-  } catch (error) {
-    console.error('❌ Error:', error);
+  } catch (err) {
     return NextResponse.json(
-      { error: 'Internal Server Error', message: error.message },
+      { 
+        error: 'Internal Server Error', 
+        message: err instanceof Error ? err.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

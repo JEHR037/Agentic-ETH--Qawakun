@@ -4,7 +4,6 @@ import { useEffect, useCallback, useState, useRef } from "react";
 import { Input } from "../components/ui/input"
 import { signIn, signOut, getCsrfToken } from "next-auth/react";
 import sdk, {
-  SignIn as SignInCore,
   type Context,
 } from "@farcaster/frame-sdk";
 import { Button } from "~/components/ui/Button";
@@ -62,8 +61,8 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
         setHasClaimed(true);
         setApiResponse("Come back later!");
       }
-    } catch (error) {
-      return;
+    } catch (err) {
+      console.warn('Error checking claim:', err);
     }
   }, [address]);
 
@@ -110,13 +109,14 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
       setIsFirstInteraction(false);
       setMessageCount(prev => prev + 1);
       setMessageHistory(prev => [...prev, message]);
-    } catch (error) {
+    } catch (err) {
+      console.warn('Error sending message:', err);
       setApiResponse("Error processing request");
     }
   };
 
   const handleNFTClaim = async () => {
-    if (!isAuthenticated || messageCount < 6) return;
+    if (!session || messageCount < 6) return;
 
     try {
       const response = await fetch("/api/nft-claim", {
@@ -125,7 +125,7 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          fid: session?.user?.fid || 0,
+          fid: session.user.fid || 0,
           wallet: address || '',
           message_count: messageCount,
           message_history: messageHistory,
@@ -159,19 +159,13 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
     setIsFirstInteraction(true);
     if (hasClaimed) {
       setApiResponse("Come back later!");
-    } else if (!isAuthenticated) {
+    } else if (!session) {
       setApiResponse("Please sign in to continue");
     } else {
       setApiResponse("Choose language");
     }
     setMessage("");
   };
-
-  const handleClose = useCallback(() => {
-    if (window.parent) {
-      window.parent.postMessage({ type: 'frame:close' }, '*');
-    }
-  }, []);
 
   if (!isSDKLoaded) {
     return <div>Loading...</div>;
@@ -222,7 +216,7 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
                        shadow-lg shadow-[#f8d54b]/20
                        border border-[#f8d54b]/10
                        disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={!isAuthenticated || messageCount < 6}
+              disabled={!session || messageCount < 6}
             >
               {messageCount < 6 
                 ? `Chat more (${messageCount}/6)` 
@@ -477,7 +471,7 @@ function GameboyInterface({
 function SignIn() {
   const [signingIn, setSigningIn] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  const { data: session, status } = useSession()
+  const { status } = useSession();
 
   const getNonce = useCallback(async () => {
     const nonce = await getCsrfToken();
@@ -496,8 +490,8 @@ function SignIn() {
         signature: result.signature,
         redirect: false,
       });
-    } catch (e) {
-      // Manejo silencioso del error
+    } catch (err) {
+      console.warn('Error during sign in:', err);
     } finally {
       setSigningIn(false);
     }
