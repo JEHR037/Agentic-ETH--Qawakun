@@ -12,7 +12,7 @@ interface PageProps {
   };
 }
 
-export default function Page({ params }: PageProps) {
+export default async function Page({ params }: PageProps) {
   const { name } = params;
 
   return <ClientPage name={name} />;
