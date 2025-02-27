@@ -52,8 +52,8 @@ export default function DashboardPage() {
 
       try {
         data = JSON.parse(responseText);
-      } catch (e) {
-        console.error('Error parsing response:', responseText);
+      } catch (error) {
+        console.error('Error parsing response:', responseText, error);
         throw new Error('Invalid response format from server');
       }
 

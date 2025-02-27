@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
 import { getAuthToken } from '../utils/auth';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
