@@ -2,10 +2,16 @@
 
 import { SessionProvider } from 'next-auth/react';
 import { PrivyProvider } from '@privy-io/react-auth';
+import type { Session } from "next-auth";
 
-export function Providers({ children }: { children: React.ReactNode }) {
+interface ProvidersProps {
+  children: React.ReactNode;
+  session: Session | null;
+}
+
+export function Providers({ children, session }: ProvidersProps) {
   return (
-    <SessionProvider>
+    <SessionProvider session={session}>
       <PrivyProvider
         appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ''}
         config={{
