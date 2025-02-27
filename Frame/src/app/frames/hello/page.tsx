@@ -1,9 +1,5 @@
 import { Metadata } from "next";
-import dynamic from "next/dynamic";
-
-const Demo = dynamic(() => import("~/components/Demo"), {
-  ssr: false,
-});
+import ClientPage from "./client-page";
 
 const appUrl = process.env.NEXT_PUBLIC_URL;
 
@@ -34,7 +30,6 @@ export const metadata: Metadata = {
   },
 };
 
-// @ts-ignore - Ignorar errores de tipo en este componente
 export default function HelloFrame() {
-  return <Demo title="Hello, world!" />;
+  return <ClientPage />;
 }
