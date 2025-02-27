@@ -1,5 +1,4 @@
 import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
@@ -38,19 +37,18 @@ export async function getAuthToken() {
         throw new Error('No token received from login');
       }
 
-      // Guardar el token en las cookies
       const newCookieStore = await cookies();
       newCookieStore.set('auth_token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 3600 // 1 hora
+        maxAge: 3600
       });
 
       console.log("✅ New token generated and stored");
-    } catch (error) {
-      console.error("❌ Auth error:", error);
-      throw error;
+    } catch (err) {
+      console.error("❌ Auth error:", err);
+      throw err;
     }
   } else {
     console.log("✅ Using existing token");
