@@ -19,21 +19,39 @@ async fn start_farcaster_monitoring(cast_client: CastClient) {
     println!("Starting Farcaster monitoring");
     
     loop {
-        if let Err(e) = cast_client.fetch_and_process_mentions(892331, Some(10)).await {
-            println!("Error processing Farcaster mentions: {}", e);
+        match cast_client.fetch_and_process_mentions(892331, Some(10)).await {
+            Ok(_) => println!("✅ Procesamiento de menciones completado exitosamente"),
+            Err(e) => println!("❌ Error procesando menciones de Farcaster: {}", e),
         }
         
-        sleep(Duration::from_secs(60*10)).await;
+        // Aumentar el intervalo para evitar rate limiting
+        println!("😴 Esperando antes del próximo ciclo...");
+        sleep(Duration::from_secs(60*15)).await; // 15 minutos
+    }
+}
+
+fn check_env_vars() {
+    let required_vars = vec![
+        "JWT_SECRET",
+        "REDIS_URL",
+        "APP_USER",
+        "APP_PASSWORD",
+        // Añadir otras variables requeridas
+    ];
+
+    for var in required_vars {
+        if std::env::var(var).is_err() {
+            println!("❌ Missing required environment variable: {}", var);
+        } else {
+            println!("✅ Found environment variable: {}", var);
+        }
     }
 }
 
 #[actix_web::main]
 async fn main() -> Result<()> {
-    // Load environment variables and check
-    match dotenv() {
-        Ok(_) => println!("📁 Environment variables loaded successfully"),
-        Err(e) => println!("❌ Error loading .env: {:?}", e),
-    }
+    dotenv::dotenv().ok();
+    check_env_vars();
     
     println!("\n🔍 Checking required environment variables:");
     let required_vars = [

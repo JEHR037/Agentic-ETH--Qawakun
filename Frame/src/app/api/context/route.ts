@@ -8,27 +8,14 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 export async function GET(request: NextRequest) {
   try {
     const token = await getAuthToken();
-    const wallet = request.headers.get('wallet');
 
-    if (!wallet) {
-      return NextResponse.json(
-        { error: 'Wallet address required' },
-        { status: 400 }
-      );
-    }
-
-    console.log('Checking NFT for wallet:', wallet); // Debug log
-
-    const response = await fetch(`${BACKEND_URL}/nft-claim`, {
+    const response = await fetch(`${BACKEND_URL}/context`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'wallet': wallet,
         'Content-Type': 'application/json'
       }
     });
-
-    console.log('Backend response status:', response.status); // Debug log
 
     if (response.status === 401) {
       const cookieStore = cookies();
@@ -37,11 +24,10 @@ export async function GET(request: NextRequest) {
     }
 
     const responseText = await response.text();
-    console.log('Backend response:', responseText); // Debug log
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: `Failed to check NFT status: ${responseText}` },
+        { error: `Failed to get context: ${responseText}` },
         { status: response.status }
       );
     }
@@ -50,16 +36,14 @@ export async function GET(request: NextRequest) {
       const data = JSON.parse(responseText);
       return NextResponse.json(data);
     } catch (e) {
-      console.error('Error parsing response:', e);
       return NextResponse.json(
         { error: 'Invalid response format from server' },
         { status: 500 }
       );
     }
   } catch (error) {
-    console.error('Error in GET /nft-claim:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Internal Server Error' },
       { status: 500 }
     );
   }
@@ -68,23 +52,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const token = await getAuthToken();
-    const claimData = await request.json();
+    const contextData = await request.json();
 
-    console.log('Claiming NFT with data:', claimData); // Debug log
-
-    const response = await fetch(`${BACKEND_URL}/nft-claim`, {
+    const response = await fetch(`${BACKEND_URL}/context`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify(claimData),
+      body: JSON.stringify(contextData),
     });
-
-    console.log('Backend response status:', response.status); // Debug log
-
-    const responseText = await response.text();
-    console.log('Backend response:', responseText); // Debug log
 
     if (response.status === 401) {
       const cookieStore = await cookies();
@@ -92,10 +69,12 @@ export async function POST(request: NextRequest) {
       return POST(request);
     }
 
+    const responseText = await response.text();
+
     if (!response.ok) {
       return NextResponse.json({
-        error: 'Claim failed',
-        message: responseText || 'Unknown error'
+        error: 'Update failed',
+        message: responseText
       }, { status: response.status });
     }
 
@@ -103,18 +82,14 @@ export async function POST(request: NextRequest) {
       const data = JSON.parse(responseText);
       return NextResponse.json(data);
     } catch {
-      // Si no podemos parsear la respuesta como JSON, la envolvemos en un objeto
       return NextResponse.json({ 
         success: true,
-        message: responseText.replace(/^"|"$/g, '').trim()
+        message: responseText
       });
     }
-
   } catch (err) {
-    console.error('Error in POST /nft-claim:', err);
     return NextResponse.json({
       error: 'Internal Server Error',
-      message: err instanceof Error ? err.message : 'Unknown error'
     }, { status: 500 });
   }
 } 

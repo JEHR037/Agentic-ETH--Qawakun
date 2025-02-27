@@ -1,0 +1,127 @@
+{
+  "languages": [
+    {
+      "code": "es",
+      "name": "Español",
+      "interactions": [
+        {
+          "options": [
+            { "code": "es_2_1", "name": "Explorar el mundo" },
+            { "code": "es_2_2", "name": "Conocer la historia" },
+            { "code": "es_2_3", "name": "Aprender magia" }
+          ]
+        },
+        {
+          "options": [
+            { "code": "es_3_1", "name": "Los cristales" },
+            { "code": "es_3_2", "name": "Los guardianes" },
+            { "code": "es_3_3", "name": "Los rituales" }
+          ]
+        },
+        {
+          "options": [
+            { "code": "es_4_1", "name": "Comunicarse" },
+            { "code": "es_4_2", "name": "Meditar" },
+            { "code": "es_4_3", "name": "Entrenar" }
+          ]
+        },
+        {
+          "options": [
+            { "code": "es_5_1", "name": "El origen" },
+            { "code": "es_5_2", "name": "El presente" },
+            { "code": "es_5_3", "name": "El futuro" }
+          ]
+        },
+        {
+          "options": [
+            { "code": "es_6_1", "name": "La misión" },
+            { "code": "es_6_2", "name": "El destino" },
+            { "code": "es_6_3", "name": "El legado" }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "en",
+      "name": "English",
+      "interactions": [
+        {
+          "options": [
+            { "code": "en_2_1", "name": "Explore the world" },
+            { "code": "en_2_2", "name": "Learn the history" },
+            { "code": "en_2_3", "name": "Study magic" }
+          ]
+        },
+        {
+          "options": [
+            { "code": "en_3_1", "name": "The crystals" },
+            { "code": "en_3_2", "name": "The guardians" },
+            { "code": "en_3_3", "name": "The rituals" }
+          ]
+        },
+        {
+          "options": [
+            { "code": "en_4_1", "name": "Communicate" },
+            { "code": "en_4_2", "name": "Meditate" },
+            { "code": "en_4_3", "name": "Train" }
+          ]
+        },
+        {
+          "options": [
+            { "code": "en_5_1", "name": "The origin" },
+            { "code": "en_5_2", "name": "The present" },
+            { "code": "en_5_3", "name": "The future" }
+          ]
+        },
+        {
+          "options": [
+            { "code": "en_6_1", "name": "The mission" },
+            { "code": "en_6_2", "name": "The destiny" },
+            { "code": "en_6_3", "name": "The legacy" }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "fr",
+      "name": "Français",
+      "interactions": [
+        {
+          "options": [
+            { "code": "fr_2_1", "name": "Explorer le monde" },
+            { "code": "fr_2_2", "name": "Connaître l'histoire" },
+            { "code": "fr_2_3", "name": "Apprendre la magie" }
+          ]
+        },
+        {
+          "options": [
+            { "code": "fr_3_1", "name": "Les cristaux" },
+            { "code": "fr_3_2", "name": "Les gardiens" },
+            { "code": "fr_3_3", "name": "Les rituels" }
+          ]
+        },
+        {
+          "options": [
+            { "code": "fr_4_1", "name": "Communiquer" },
+            { "code": "fr_4_2", "name": "Méditer" },
+            { "code": "fr_4_3", "name": "S'entraîner" }
+          ]
+        },
+        {
+          "options": [
+            { "code": "fr_5_1", "name": "L'origine" },
+            { "code": "fr_5_2", "name": "Le présent" },
+            { "code": "fr_5_3", "name": "L'avenir" }
+          ]
+        },
+        {
+          "options": [
+            { "code": "fr_6_1", "name": "La mission" },
+            { "code": "fr_6_2", "name": "Le destin" },
+            { "code": "fr_6_3", "name": "L'héritage" }
+          ]
+        }
+      ]
+    }
+  ]
+} 

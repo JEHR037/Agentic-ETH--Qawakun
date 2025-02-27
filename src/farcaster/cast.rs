@@ -3,13 +3,14 @@ use anyhow::Result;
 use redis::AsyncCommands;
 use serde_json::json;
 use chrono::{DateTime, Utc};
-use std::collections::HashSet;
 use crate::openai_methods::get_text::handle_conversation;
 use std::env;
+use tokio;
 
 const API_ROOT: &str = "https://api.warpcast.com";
 const LAST_PROCESSED_CAST_KEY: &str = "farcaster:last_processed_cast";
-const MY_FID: u64 = 892331;  // Tu FID
+const MY_FID: u64 = 979204;  // Tu FID
+const BOT_USERNAME: &str = "@qawakun";  // Agregar esta constante
 
 #[derive(Debug, Deserialize)]
 pub struct CastRoot {
@@ -127,138 +128,153 @@ impl CastClient {
                     "hash": parent_hash,
                     "fid": parent_fid
                 },
-                "text": content
+                "text": content.trim()
             }),
-            None => json!({ "text": content })
+            None => json!({ 
+                "text": content.trim() 
+            })
         };
 
-        let client = reqwest::Client::new();
-        let response = client
+        let response = reqwest::Client::new()
             .post(format!("{}/v2/casts", API_ROOT))
             .header("Content-Type", "application/json")
             .header("Authorization", format!("Bearer {}", self.session_token))
             .json(&payload)
             .send()
+            .await?
+            .text()
             .await?;
 
-        let cast: Cast = response.json().await?;
+        let cast: Cast = serde_json::from_str(&response)?;
         
+        // Guardar en Redis para mantener el historial de la conversación
         let mut con = self.redis_client.get_async_connection().await?;
-        let key = format!("farcaster:conversation:{}", cast.thread_hash.as_deref().unwrap_or(&cast.hash));
-        let _: () = con.hset(&key, cast.hash.clone(), serde_json::to_string(&cast)?).await?;
-        
+        let key = format!("farcaster:conversation:{}", 
+            cast.thread_hash.as_deref().unwrap_or(&cast.hash));
+        let _: () = con.hset(&key, &cast.hash, &response).await?;
+        let _: () = con.expire(&key, 24*60*60).await?;
+
         Ok(cast)
     }
 
     pub async fn fetch_and_process_mentions(&self, fid: u64, limit: Option<i32>) -> Result<()> {
-        println!("👂 Buscando menciones en Farcaster...");
+        println!("👂 Looking for Farcaster mentions...");
         let mut con = self.redis_client.get_async_connection().await?;
-        
-
         let last_processed: Option<String> = con.get(LAST_PROCESSED_CAST_KEY).await.ok();
-        if let Some(ref last) = last_processed {
-            println!("📝 Último cast procesado: {}", last);
-        }
         
         let casts = self.get_casts_by_fid(fid, limit, None).await?;
-        println!("📥 {} casts obtenidos", casts.result.casts.len());
+        println!("📥 {} casts retrieved", casts.result.casts.len());
         
         let mut new_mentions = Vec::new();
-        let mut processed = HashSet::new();
+        let mut found_last = false;
 
-        for cast in casts.result.casts {
-
+        for cast in &casts.result.casts {
             if let Some(ref last) = last_processed {
                 if cast.hash == *last {
-                    println!("✓ Llegamos al último cast procesado");
-                    break;
+                    found_last = true;
+                    continue;
                 }
             }
 
-            if processed.is_empty() {
-                let _: () = con.set(LAST_PROCESSED_CAST_KEY, &cast.hash).await?;
-                println!("💾 Nuevo último cast guardado: {}", cast.hash);
+            if !found_last || last_processed.is_none() {
+                if cast.author.fid != MY_FID && self.is_mention_to_us(&cast) {
+                    println!("\n🎯 New mention needs response: {}", cast.text);
+                    new_mentions.push(cast.clone());
+                }
             }
-            
-            processed.insert(cast.hash.clone());
+        }
 
-            if cast.author.fid != MY_FID && self.is_mention_to_us(&cast) {
-                new_mentions.push(cast);
-            }
+        if let Some(first_cast) = casts.result.casts.first() {
+            let _: () = con.set(LAST_PROCESSED_CAST_KEY, &first_cast.hash).await?;
         }
 
         if !new_mentions.is_empty() {
-            println!("\n🔔 {} nuevas menciones encontradas", new_mentions.len());
+            println!("\n🔔 Processing {} new mentions", new_mentions.len());
+            new_mentions.reverse();
+            
             for mention in new_mentions {
-                println!("\n=== Nueva Mención ===");
-                println!("🔷 Cast ID: {}", mention.hash);
-                println!("👤 De: @{} (FID: {})", mention.author.username, mention.author.fid);
-                println!("📝 Mensaje: {}", mention.text);
-                println!("⏰ Timestamp: {}", mention.format_timestamp());
-                
-
-                if let Err(e) = self.handle_mention(&mention).await {
-                    println!("❌ Error procesando mención: {}", e);
+                match self.handle_mention(&mention).await {
+                    Ok(_) => println!("✅ Successfully replied to: {}", mention.text),
+                    Err(e) => println!("❌ Failed to reply: {}", e),
                 }
             }
-        } else {
-            println!("😴 No hay nuevas menciones");
         }
 
         Ok(())
     }
 
-    async fn handle_mention(&self, cast: &Cast) -> Result<()> {
-        let author = cast.author.username.clone();
-        let content = cast.text.clone();
+    fn is_mention_to_us(&self, cast: &Cast) -> bool {
+        let is_mention = cast.text.to_lowercase().contains(&BOT_USERNAME.to_lowercase());
         
+        let is_reply_to_us = match &cast.parent_hash {
+            Some(parent_hash) => {
+                let rt = tokio::runtime::Runtime::new().unwrap();
+                
+                rt.block_on(async {
+                    if let Ok(mut con) = self.redis_client.get_async_connection().await {
+                        let conversation_key = format!("farcaster:conversation:{}", 
+                            cast.thread_hash.as_deref().unwrap_or(parent_hash));
+                        
+                        match con.hget::<_, _, Option<String>>(&conversation_key, parent_hash).await {
+                            Ok(Some(parent_cast_str)) => {
+                                if let Ok(parent_cast) = serde_json::from_str::<Cast>(&parent_cast_str) {
+                                    parent_cast.author.fid == MY_FID || 
+                                    parent_cast.author.fid == cast.author.fid
+                                } else {
+                                    false
+                                }
+                            },
+                            _ => false
+                        }
+                    } else {
+                        false
+                    }
+                })
+            },
+            None => false
+        };
 
-        if self.is_spam(&content) {
-            println!("🚫 Spam detectado, ignorando cast");
+        is_mention || is_reply_to_us
+    }
+
+    async fn handle_mention(&self, cast: &Cast) -> Result<()> {
+        if self.is_spam(&cast.text) {
             return Ok(());
         }
 
-        println!("👤 De: @{}", author);
-        println!("💭 Mensaje: {}", content);
-
-
-        let conversation_key = format!("farcaster:conversation:{}",
+        let conversation_key = format!("farcaster:conversation:{}", 
             cast.thread_hash.as_deref().unwrap_or(&cast.hash));
         
-        let mut con = self.redis_client.get_async_connection().await?;
-        
-
-        let _: () = con.hset(&conversation_key, &cast.hash, serde_json::to_string(&cast)?).await?;
-        println!("💾 Cast guardado en conversación: {}", conversation_key);
-
-
         let api_key = env::var("OPENAI_API_KEY")
-            .map_err(|e| anyhow::anyhow!("Error obteniendo OPENAI_API_KEY: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to get OPENAI_API_KEY: {}", e))?;
         let context = std::fs::read_to_string("context.md")
-            .map_err(|e| anyhow::anyhow!("Error leyendo context.md: {}", e))?;
-
+            .map_err(|e| anyhow::anyhow!("Failed to read context.md: {}", e))?;
 
         let response = handle_conversation(
             &self.redis_client,
             &api_key,
-            &author,
+            &cast.author.username,
             &context,
-            &content
+            &cast.text
         )
         .await
-        .map_err(|e| anyhow::anyhow!("Error generando respuesta con OpenAI: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("OpenAI API error: {}", e))?;
 
         if let Some(message) = response["choices"][0]["message"]["content"].as_str() {
-            println!("✍️ Respuesta generada: {}", message);
+            let reply = self.publish_cast(message, Some((&cast.hash, cast.author.fid))).await
+                .map_err(|e| anyhow::anyhow!("Failed to publish cast: {}", e))?;
 
-            let reply = self.publish_cast(message, Some((&cast.hash, cast.author.fid))).await?;
-            println!("📤 Respuesta publicada con ID: {}", reply.hash);
-
-
-            let _: () = con.hset(&conversation_key, &reply.hash, serde_json::to_string(&reply)?).await?;
-            println!("💾 Respuesta guardada en conversación");
-
-            let _: () = con.expire(&conversation_key, 24*60*60).await?;
+            let mut con = self.redis_client.get_async_connection().await
+                .map_err(|e| anyhow::anyhow!("Redis connection error: {}", e))?;
+            
+            con.hset(&conversation_key, &reply.hash, serde_json::to_string(&reply)?)
+                .await
+                .map_err(|e| anyhow::anyhow!("Failed to save to Redis: {}", e))?;
+            
+            con.expire(&conversation_key, 24*60*60).await
+                .map_err(|e| anyhow::anyhow!("Failed to set expiry: {}", e))?;
+        } else {
+            return Err(anyhow::anyhow!("No response content in OpenAI result"));
         }
 
         Ok(())
@@ -296,16 +312,25 @@ impl CastClient {
         false
     }
 
-    fn is_mention_to_us(&self, cast: &Cast) -> bool {
-        let is_mention = cast.text.to_lowercase().contains("@tayni-co");
-        let is_reply = cast.parent_hash.is_some();
-        
-        if is_mention {
-            println!("🎯 Mención directa detectada");
-        } else if is_reply {
-            println!("↩️ Respuesta detectada");
+    async fn get_casts_with_retry(&self, fid: u64, limit: Option<i32>, cursor: Option<&str>) -> Result<CastRoot> {
+        let max_retries = 3;
+        let mut retry_count = 0;
+        let mut delay = 2;
+
+        loop {
+            match self.get_casts_by_fid(fid, limit, cursor).await {
+                Ok(casts) => return Ok(casts),
+                Err(e) => {
+                    retry_count += 1;
+                    if retry_count >= max_retries {
+                        return Err(e);
+                    }
+                    println!("⚠️ Error getting casts (attempt {}/{}): {}", retry_count, max_retries, e);
+                    println!("🕐 Waiting {} seconds before retry...", delay);
+                    tokio::time::sleep(tokio::time::Duration::from_secs(delay)).await;
+                    delay *= 2; // Exponential backoff
+                }
+            }
         }
-        
-        is_mention || is_reply
     }
 } 

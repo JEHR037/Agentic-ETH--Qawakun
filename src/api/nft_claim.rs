@@ -51,7 +51,6 @@ pub async fn handle_nft_claim_get(
         None => return HttpResponse::BadRequest().body("Wallet address required"),
     };
 
-    // Verificar si la billetera tiene un NFT en el contrato
     match check_wallet_has_nft(&nft_manager, &user_wallet).await {
         Ok(has_nft) => {
             if has_nft {
