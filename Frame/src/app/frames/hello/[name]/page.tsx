@@ -1,12 +1,5 @@
-"use client";
-
 import { Metadata } from "next";
-import dynamic from "next/dynamic";
-import { Providers } from "~/app/providers";
-
-const Demo = dynamic(() => import("~/components/Demo"), {
-  ssr: false,
-});
+import ClientPage from "./client-page";
 
 export const metadata: Metadata = {
   title: "Hello",
@@ -20,11 +13,7 @@ interface PageProps {
 }
 
 export default function Page({ params }: PageProps) {
-  const { name } = params.name;
+  const { name } = params;
 
-  return (
-    <Providers>
-      <Demo title={`Hello, ${name}`} />
-    </Providers>
-  );
+  return <ClientPage name={name} />;
 }
