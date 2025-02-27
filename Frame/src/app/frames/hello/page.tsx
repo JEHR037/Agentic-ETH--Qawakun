@@ -1,5 +1,9 @@
 import { Metadata } from "next";
-import App from "~/app/app";
+import dynamic from "next/dynamic";
+
+const Demo = dynamic(() => import("~/components/Demo"), {
+  ssr: false,
+});
 
 const appUrl = process.env.NEXT_PUBLIC_URL;
 
@@ -19,8 +23,8 @@ const frame = {
 };
 
 export const metadata: Metadata = {
-  title: "Hello, world!",
-  description: "A simple hello world frame",
+  title: "Hello",
+  description: "Say hello to the world",
   openGraph: {
     title: "Hello, world!",
     description: "A simple hello world frame",
@@ -30,6 +34,7 @@ export const metadata: Metadata = {
   },
 };
 
+// @ts-ignore - Ignorar errores de tipo en este componente
 export default function HelloFrame() {
-  return <App title={"Hello, world!"} />;
+  return <Demo title="Hello, world!" />;
 }
