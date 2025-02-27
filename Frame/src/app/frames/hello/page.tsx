@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import ClientPage from "./client-page";
+import { getSession } from "~/auth";
 
 const appUrl = process.env.NEXT_PUBLIC_URL;
 
@@ -30,6 +31,9 @@ export const metadata: Metadata = {
   },
 };
 
-export default function HelloFrame() {
-  return <ClientPage />;
+export default async function Page({ params }: { params: { name: string } }) {
+  const { name } = params;
+  const session = await getSession();
+
+  return <ClientPage name={name} session={session} />;
 }
