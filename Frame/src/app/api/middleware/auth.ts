@@ -1,48 +1,31 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuthToken } from '../utils/auth';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-export async function withAuth(request: NextRequest, handler: Function) {
+export type MiddlewareFunction = (
+  req: NextRequest,
+  res: NextResponse
+) => Promise<NextResponse | void>;
+
+export async function withAuth(
+  req: NextRequest,
+  handler: MiddlewareFunction
+): Promise<NextResponse> {
   try {
-    console.log('🔒 Authenticating request...');
-    const tokenResponse = await getAuthToken();
+    const token = req.headers.get('Authorization')?.split(' ')[1];
     
-    if (!tokenResponse || typeof tokenResponse !== 'string') {
-      console.error('❌ No valid token received');
-      return NextResponse.json({ error: 'No valid token' }, { status: 401 });
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
-    // Crear nuevos headers manteniendo los esenciales del request original
-    const headers = new Headers();
-    headers.set('Authorization', `Bearer ${tokenResponse}`);
-    headers.set('Content-Type', 'application/json');
-
-    // Copiar otros headers importantes si existen
-    ['accept', 'accept-language', 'user-agent'].forEach(header => {
-      const value = request.headers.get(header);
-      if (value) headers.set(header, value);
-    });
-
-    console.log('📨 Headers being sent:', {
-      Authorization: `Bearer ${tokenResponse.substring(0, 20)}...`,
-      'Content-Type': headers.get('Content-Type')
-    });
-
-    const authorizedRequest = new Request(request.url, {
-      method: request.method,
-      headers,
-      body: request.body
-    });
-
-    console.log('🚀 Forwarding authenticated request to handler');
-    const response = await handler(authorizedRequest);
-    console.log('✅ Handler response received:', response.status);
-    
-    return response;
-  } catch (error) {
-    console.error('❌ Authentication error:', error);
+    return (await handler(req, NextResponse.next())) || NextResponse.next();
+  } catch (err) {
+    console.error('Auth middleware error:', err);
     return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
+      { error: 'Internal Server Error' },
+      { status: 500 }
     );
   }
 } 

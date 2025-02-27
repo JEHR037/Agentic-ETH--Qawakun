@@ -1,47 +1,23 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getAuthToken } from '../utils/auth';
-import { cookies } from 'next/headers';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const token = await getAuthToken();
-
     const response = await fetch(`${BACKEND_URL}/context`, {
-      method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
 
-    if (response.status === 401) {
-      const cookieStore = cookies();
-      cookieStore.delete('auth_token');
-      return GET(request);
-    }
-
-    const responseText = await response.text();
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: `Failed to get context: ${responseText}` },
-        { status: response.status }
-      );
-    }
-
-    try {
-      const data = JSON.parse(responseText);
-      return NextResponse.json(data);
-    } catch (e) {
-      return NextResponse.json(
-        { error: 'Invalid response format from server' },
-        { status: 500 }
-      );
-    }
-  } catch (error) {
+    const data = await response.json();
+    return NextResponse.json(data);
+  } catch (err) {
+    console.error('Error in GET /context:', err);
     return NextResponse.json(
       { error: 'Internal Server Error' },
       { status: 500 }
@@ -52,44 +28,24 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const token = await getAuthToken();
-    const contextData = await request.json();
+    const body = await request.json();
 
     const response = await fetch(`${BACKEND_URL}/context`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify(contextData),
+      body: JSON.stringify(body)
     });
 
-    if (response.status === 401) {
-      const cookieStore = await cookies();
-      await cookieStore.delete('auth_token');
-      return POST(request);
-    }
-
-    const responseText = await response.text();
-
-    if (!response.ok) {
-      return NextResponse.json({
-        error: 'Update failed',
-        message: responseText
-      }, { status: response.status });
-    }
-
-    try {
-      const data = JSON.parse(responseText);
-      return NextResponse.json(data);
-    } catch {
-      return NextResponse.json({ 
-        success: true,
-        message: responseText
-      });
-    }
+    const data = await response.json();
+    return NextResponse.json(data);
   } catch (err) {
-    return NextResponse.json({
-      error: 'Internal Server Error',
-    }, { status: 500 });
+    console.error('Error in POST /context:', err);
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 } 

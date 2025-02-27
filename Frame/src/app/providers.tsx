@@ -1,24 +1,20 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import type { Session } from "next-auth"
-import { SessionProvider } from "next-auth/react"
+import { SessionProvider } from 'next-auth/react';
 import { PrivyProvider } from '@privy-io/react-auth';
 
-export function Providers({ session, children }: { session: Session | null, children: React.ReactNode }) {
+export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider session={session}>
+    <SessionProvider>
       <PrivyProvider
         appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ''}
         config={{
+          loginMethods: ['email', 'wallet'],
           appearance: {
             theme: 'dark',
-            accentColor: '#f8c20b',
+            accentColor: '#676FFF',
+            showWalletLoginFirst: true,
           },
-          embeddedWallets: {
-            createOnLogin: 'users-without-wallets',
-          },
-          loginMethods: ['email', 'wallet', 'google', 'apple', 'farcaster'],
         }}
       >
         {children}

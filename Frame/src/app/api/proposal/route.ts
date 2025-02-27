@@ -6,25 +6,20 @@ import { cookies } from 'next/headers';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
 // Get proposals from Redis
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const token = await getAuthToken();
-    const response = await fetch(`${BACKEND_URL}/proposals`, {
+    const response = await fetch(`${BACKEND_URL}/proposal`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
 
-    if (response.status === 401) {
-      const cookieStore = cookies();
-      cookieStore.delete('auth_token');
-      return GET(request);
-    }
-
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error) {
+  } catch (err) {
+    console.error('Error in GET /proposal:', err);
     return NextResponse.json(
       { error: 'Internal Server Error' },
       { status: 500 }
