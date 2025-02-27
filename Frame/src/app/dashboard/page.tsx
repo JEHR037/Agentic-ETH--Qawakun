@@ -70,9 +70,9 @@ export default function DashboardPage() {
       }
 
       setProposals(data);
-    } catch (err) {
-      console.error('Error loading proposals:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load proposals');
+    } catch (error) {
+      console.error('Error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load proposals');
     } finally {
       setLoading(false);
     }
@@ -103,7 +103,7 @@ export default function DashboardPage() {
       setError(null);
       setSuccess(null);
       
-      console.log("�� Elevating proposal status to 'Ready for blockchain'");
+      console.log("Elevating proposal status to 'Ready for blockchain'");
       
       // Solo actualizar en Redis con un estado especial (ej. status = 3)
       const updateResponse = await fetch('/api/proposal', {
@@ -134,16 +134,6 @@ export default function DashboardPage() {
       setLoading(false);
     }
   };
-
-  // Función auxiliar para convertir el tipo de propuesta a número
-  function getProposalTypeNumber(type: string): number {
-    switch (type.toUpperCase()) {
-      case 'WORLD': return 0;
-      case 'CHARACTERS': return 1;
-      case 'LAWS': return 2;
-      default: return 0;
-    }
-  }
 
   const filteredProposals = proposals.filter(proposal => {
     console.log('Filtrando propuesta:', proposal);
