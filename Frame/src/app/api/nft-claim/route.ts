@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     console.log('Backend response status:', response.status); // Debug log
 
     if (response.status === 401) {
-      const cookieStore = cookies();
+      const cookieStore = await cookies();
       cookieStore.delete('auth_token');
       return GET(request);
     }
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     if (response.status === 401) {
       const cookieStore = await cookies();
-      await cookieStore.delete('auth_token');
+      cookieStore.delete('auth_token');
       return POST(request);
     }
 
