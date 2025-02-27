@@ -6,14 +6,16 @@ export const metadata: Metadata = {
   description: "Say hello to someone",
 };
 
-interface PageProps {
+// Usar los tipos exactos que Next.js espera
+type Props = {
   params: {
     name: string;
   };
-}
+  searchParams: Record<string, string | string[] | undefined>;
+};
 
-export default async function Page({ params }: PageProps) {
-  const { name } = params;
+export default async function Page(props: Props) {
+  const { name } = props.params;
 
   return <ClientPage name={name} />;
 }
