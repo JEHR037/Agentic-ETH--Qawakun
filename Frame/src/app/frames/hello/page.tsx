@@ -31,8 +31,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function Page({ params }: { params: { name: string } }) {
-  const { name } = params;
+export default async function Page({ params }: { params: Promise<{ name: string }> }) {
+  const { name } = await params;
   const session = await getSession();
 
   return <ClientPage name={name} session={session} />;
