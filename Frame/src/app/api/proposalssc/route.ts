@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getAuthToken } from '../utils/auth';
-import { cookies } from 'next/headers';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const token = await getAuthToken();
     const response = await fetch(`${BACKEND_URL}/proposalssc`, {
@@ -19,7 +18,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(data);
   } catch (error) {
     return NextResponse.json(
-      { error: 'Internal Server Error' },
+      { error: 'Internal Server Error', details: error },
       { status: 500 }
     );
   }
@@ -58,7 +57,7 @@ export async function POST(request: NextRequest) {
       message_history: body.conversation ? [body.conversation] : [],
       contact: "",
       flexibility: 5,
-      timestamp: new Date().toISOString(),
+      timestamp: unixTimestamp,
       status: 3  // En votación
     };
     

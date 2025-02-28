@@ -54,7 +54,7 @@ export default function DashboardPage() {
         data = JSON.parse(responseText);
       } catch (e) {
         console.error('Error parsing response:', responseText);
-        throw new Error('Invalid response format from server');
+        throw new Error('Invalid response format from server', { cause: e });
       }
 
       if (!response.ok) {
@@ -135,15 +135,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Función auxiliar para convertir el tipo de propuesta a número
-  function getProposalTypeNumber(type: string): number {
-    switch (type.toUpperCase()) {
-      case 'WORLD': return 0;
-      case 'CHARACTERS': return 1;
-      case 'LAWS': return 2;
-      default: return 0;
-    }
-  }
+ 
 
   const filteredProposals = proposals.filter(proposal => {
     console.log('Filtrando propuesta:', proposal);

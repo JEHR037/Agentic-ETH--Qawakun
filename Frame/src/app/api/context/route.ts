@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (response.status === 401) {
-      const cookieStore = cookies();
+      const cookieStore = await cookies();
       cookieStore.delete('auth_token');
       return GET(request);
     }
@@ -37,13 +37,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(data);
     } catch (e) {
       return NextResponse.json(
-        { error: 'Invalid response format from server' },
+        { error: 'Invalid response format from server', details: e },
         { status: 500 }
       );
     }
   } catch (error) {
     return NextResponse.json(
-      { error: 'Internal Server Error' },
+      { error: 'Internal Server Error', details: error },
       { status: 500 }
     );
   }
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     }
   } catch (err) {
     return NextResponse.json({
-      error: 'Internal Server Error',
+      error: 'Internal Server Error', details: err
     }, { status: 500 });
   }
 } 

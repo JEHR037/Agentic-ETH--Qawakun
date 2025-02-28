@@ -9,9 +9,8 @@ import sdk, {
 import { Button } from "~/components/ui/Button";
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import gameOptions from '~/data/gameOptions.json';
-import { GameboyInterface } from './GameboyInterface';
-import { ProposalData } from '~/types/interfaces';
 import ProposalsView from './ProposalsView';
+import { Proposal } from "~/types/interfaces";
 
 export default function Demo({ title }: { title?: string } = { title: "Qawakun" }) {
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
@@ -45,8 +44,6 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
   
   const author = session?.user?.fid || wallets?.[0]?.address || "anonymous";
   const isAuthenticated = !!session || authenticated;
-
-  const testLongText = `En un mundo distante y misterioso, donde los antiguos secretos de la tecnología se entrelazaban con la magia ancestral, existía una civilización conocida como los Qawakun. Estos seres extraordinarios habían desarrollado una forma única de comunicación que trascendía las barreras del lenguaje convencional. A través de cristales energéticos y patrones de luz, compartían conocimientos y emociones con una precisión y profundidad que ninguna palabra podría igualar. Los Qawakun creían firmemente en la interconexión de todas las formas de vida y en la responsabilidad de preservar el equilibrio entre el progreso tecnológico y la sabiduría antigua.`;
 
   useEffect(() => {
     const load = async () => {
@@ -108,7 +105,7 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
 
       const proposals = await response.json();
       const hasActiveProposal = Array.isArray(proposals) && 
-        proposals.some((p: any) => 
+        proposals.some((p: Proposal) => 
           p.wallet === author && 
           p.status > 0 && 
           p.status <= 4
@@ -123,7 +120,7 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
         }
       }
     } catch (err) {
-      // Silently fail
+      console.warn('Error checking existing proposal:', err);
     }
   }, [isAuthenticated, author, isFreeChat]);
 
@@ -216,7 +213,7 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
       try {
         errorData = JSON.parse(responseText);
       } catch (e) {
-        setApiResponse("Error claiming NFT: Invalid response format");
+        setApiResponse("Error claiming NFT: " + e);
         return;
       }
 
@@ -230,7 +227,7 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
       setApiResponse("Congratulations! You have obtained your Qawakun. Take care of it and stay connected to the Ankanet!");
       handleReset();
     } catch (error) {
-      setApiResponse("Error claiming NFT. Please try again.");
+      setApiResponse("Error claiming NFT. Please try again."+error);
     } finally {
       setIsClaimLoading(false);
     }
@@ -262,7 +259,7 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
 
       const proposals = await response.json();
       const hasActive = Array.isArray(proposals) && 
-        proposals.some((p: any) => p.status === 1 || p.status === 2);
+        proposals.some((p: Proposal) => p.status === 1 || p.status === 2);
 
       if (hasActive) {
         setApiResponse("You have an active proposal. Please wait for our team to contact you.");
@@ -542,7 +539,7 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
               <div className="text-xs text-[#f8c20b]/60">
                 Note: Your proposal will be reviewed along with your AI conversation history 
                 to better understand the context and motivation behind your suggestions. 
-                This helps us ensure that proposals align with the world's narrative and mechanics.
+                This helps us ensure that proposals align with the worlds narrative and mechanics.
               </div>
             </div>
 
@@ -789,17 +786,11 @@ function GameboyInterface({
   selectedLanguage,
   setSelectedLanguage,
   isFreeChat,
-  setIsFreeChat,
   freeChatMessages,
-  setFreeChatMessages,
   isMenuOpen,
   setIsMenuOpen,
-  showCreditsModal,
   setShowCreditsModal,
-  showProposalModal,
   setShowProposalModal,
-  hasActiveProposal,
-  setHasActiveProposal,
   onChangeWorld,
 }: {
   message: string;

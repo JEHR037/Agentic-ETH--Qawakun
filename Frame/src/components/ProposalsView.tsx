@@ -1,3 +1,4 @@
+"use client";
 import { useEffect, useState } from 'react';
 import { Button } from "~/components/ui/Button";
 
@@ -20,7 +21,6 @@ export default function ProposalsView() {
         const response = await fetch('/api/proposal');
         if (!response.ok) return;
         const data = await response.json();
-        // Filtrar solo propuestas en estado 3 (en votación)
         setProposals(data.filter((p: Proposal) => p.status === 3));
       } catch (err) {
         console.error('Error fetching proposals:', err);

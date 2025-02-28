@@ -6,7 +6,7 @@ import { cookies } from 'next/headers';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
 // Get proposals from Redis
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const token = await getAuthToken();
     const response = await fetch(`${BACKEND_URL}/proposals`, {
@@ -16,17 +16,11 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    if (response.status === 401) {
-      const cookieStore = cookies();
-      cookieStore.delete('auth_token');
-      return GET(request);
-    }
-
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
     return NextResponse.json(
-      { error: 'Internal Server Error' },
+      { error: 'Internal Server Error', details: error },
       { status: 500 }
     );
   }

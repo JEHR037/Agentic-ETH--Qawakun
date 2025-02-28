@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { Button } from "~/components/ui/Button";
-import { Input } from "~/components/ui/input";
 
 type ContextType = 'world' | 'laws' | 'personality' | 'characters' | 'examples';
 
