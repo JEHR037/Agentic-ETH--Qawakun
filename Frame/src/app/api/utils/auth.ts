@@ -1,5 +1,4 @@
 import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
 const user = process.env.NEXT_PUBLIC_API_USER;

@@ -1,98 +1,283 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "~/components/ui/Button";
 
 interface Proposal {
   wallet: string;
   proposal_type: string;
   description: string;
+  message_history: string[];
+  contact: string;
   flexibility: number;
-  status: number;
   timestamp: string;
+  status: number;
 }
 
 export default function ProposalsView() {
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchProposals = async () => {
-      try {
-        const response = await fetch('/api/proposal');
-        if (!response.ok) return;
-        const data = await response.json();
-        setProposals(data.filter((p: Proposal) => p.status === 3));
-      } catch (err) {
-        console.error('Error fetching proposals:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProposals();
+    loadProposals();
   }, []);
 
-  return (
-    <div className="min-h-screen w-full bg-cover bg-center bg-no-repeat"
-         style={{ backgroundImage: 'url("/container11.jpg")' }}>
-      <div className="w-[400px] mx-auto py-2 px-2">
-        <div className="bg-gradient-to-b from-[#5d490d] to-[#040404] p-6 rounded-3xl shadow-2xl 
-                      border border-[#7c7c7c] relative">
-          <h2 className="text-2xl font-bold text-center mb-6 text-[#f8c20b]">
-            Active Proposals
-          </h2>
+  const loadProposals = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/proposal');
+      if (!response.ok) throw new Error('Failed to load proposals');
+      const data = await response.json();
+      
+      // Ordenar propuestas: primero las que están en votación (status 3)
+      const sortedProposals = data.sort((a: Proposal, b: Proposal) => {
+        if (a.status === 3 && b.status !== 3) return -1;
+        if (a.status !== 3 && b.status === 3) return 1;
+        // Si ambas tienen el mismo status, ordenar por timestamp (más recientes primero)
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      });
+      
+      setProposals(sortedProposals);
+    } catch (error) {
+      console.error('Error:', error);
+      setError('Failed to load proposals');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-          {loading ? (
-            <div className="flex justify-center p-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#f8c20b]"></div>
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#f8c20b]"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-red-500 text-center p-4">
+        {error}
+      </div>
+    );
+  }
+
+  if (proposals.length === 0) {
+    return (
+      <div className="text-center p-10">
+        <p className="text-[#f8c20b]/80 text-xl">No proposals found in voting phase</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <h1 className="text-[#f8c20b] text-2xl font-bold mb-8">Proposals in Voting</h1>
+      
+      {/* Grid de propuestas - mejorado para responsive */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {proposals.map((proposal) => (
+          <div
+            key={proposal.wallet}
+            className="bg-[#1a1812]/30 rounded-lg p-6 border border-[#f8c20b]/10 hover:border-[#f8c20b]/30 transition-all h-full flex flex-col"
+          >
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-[#f8c20b] text-lg font-semibold">
+                {proposal.proposal_type}
+              </h3>
+              <span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(proposal.status)}`}>
+                {getStatusText(proposal.status)}
+              </span>
             </div>
-          ) : proposals.length === 0 ? (
-            <p className="text-center text-[#f8c20b]/80 p-8">
-              No proposals available for voting at this time.
+            <p className="text-[#f8c20b]/80 mb-6 line-clamp-3 flex-grow">
+              {proposal.description}
             </p>
-          ) : (
-            <div className="space-y-4">
-              {proposals.map((proposal) => (
-                <div key={`${proposal.wallet}-${proposal.timestamp}`}
-                     className="bg-[#1a1812]/50 p-4 rounded-lg border border-[#f8c20b]/30">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-[#f8c20b] font-medium">
-                      {proposal.proposal_type}
-                    </span>
-                    <span className="text-[#f8c20b]/60 text-sm">
-                      {new Date(proposal.timestamp).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <p className="text-[#f8c20b]/90 mb-4">
-                    {proposal.description}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mt-auto pt-4 border-t border-[#f8c20b]/10">
+              <span className="text-sm text-[#f8c20b]/60">
+                {new Date(proposal.timestamp).toLocaleDateString()}
+              </span>
+              <Button 
+                onClick={() => setSelectedProposal(proposal)}
+                className="bg-[#f8c20b]/20 hover:bg-[#f8c20b]/30 text-[#f8c20b] border border-[#f8c20b]/30 px-5 py-2 w-full sm:w-auto"
+              >
+                View Details
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Modal - Optimizado para todos los tamaños de pantalla */}
+      {selectedProposal && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[9999] overflow-hidden">
+          <div 
+            className="bg-[#1a1812] rounded-xl border border-[#f8c20b]/20 w-full max-w-5xl max-h-[90vh] overflow-y-auto"
+            style={{ boxShadow: '0 0 30px rgba(248, 194, 11, 0.1)' }}
+          >
+            {/* Header - Fixed para que siempre sea visible */}
+            <div className="sticky top-0 bg-[#1a1812] py-6 px-6 lg:px-8 border-b border-[#f8c20b]/10 z-[9999] flex justify-between items-center">
+              <h2 className="text-[#f8c20b] text-xl md:text-2xl font-bold truncate pr-4">
+                {selectedProposal.proposal_type}
+              </h2>
+              <button
+                onClick={() => setSelectedProposal(null)}
+                className="bg-[#1a1812] hover:bg-[#1a1812]/80 text-[#f8c20b] rounded-full w-10 h-10 flex items-center justify-center text-xl transition-colors border border-[#f8c20b]/20 flex-shrink-0"
+              >
+                ✕
+              </button>
+            </div>
+            
+            {/* Status bar */}
+            <div className="bg-[#1a1812]/80 px-6 lg:px-8 py-3 border-b border-[#f8c20b]/10">
+              <div className="flex flex-wrap items-center gap-4">
+                <span className={`px-4 py-1 rounded-full text-sm ${getStatusColor(selectedProposal.status)}`}>
+                  {getStatusText(selectedProposal.status)}
+                </span>
+                <span className="text-[#f8c20b]/60 text-sm">
+                  Submitted by {truncateAddress(selectedProposal.wallet)}
+                </span>
+              </div>
+            </div>
+
+            {/* Content - Con padding responsivo */}
+            <div className="p-6 lg:p-8 space-y-8">
+              {/* Description Section */}
+              <section>
+                <h3 className="text-[#f8c20b] text-xl font-semibold mb-4">Description</h3>
+                <div className="bg-[#1a1812]/50 p-4 md:p-6 rounded-lg border border-[#f8c20b]/10">
+                  <p className="text-[#f8c20b]/80 text-base md:text-lg leading-relaxed whitespace-pre-wrap">
+                    {selectedProposal.description}
                   </p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[#f8c20b]/60 text-sm">
-                      Flexibility: {proposal.flexibility}/10
-                    </span>
-                    <div className="space-x-2">
-                      <Button
-                        onClick={() => {/* TODO: Implementar votación */}}
-                        className="bg-[#2da44e] text-white px-4 py-1 rounded
-                                 hover:bg-[#2da44e]/90 transition-colors"
+                </div>
+              </section>
+
+              {/* Message History Section */}
+              <section>
+                <h3 className="text-[#f8c20b] text-xl font-semibold mb-4">Message History</h3>
+                <div className="space-y-4">
+                  {selectedProposal.message_history && selectedProposal.message_history.length > 0 ? (
+                    selectedProposal.message_history.map((message, index) => (
+                      <div 
+                        key={index} 
+                        className="bg-[#1a1812]/50 p-4 md:p-6 rounded-lg border border-[#f8c20b]/10"
                       >
-                        Approve
-                      </Button>
-                      <Button
-                        onClick={() => {/* TODO: Implementar votación */}}
-                        className="bg-[#cf222e] text-white px-4 py-1 rounded
-                                 hover:bg-[#cf222e]/90 transition-colors"
-                      >
-                        Reject
-                      </Button>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-[#f8c20b]/40 text-sm">Message {index + 1}</span>
+                          <div className="flex-1 h-px bg-[#f8c20b]/10"></div>
+                        </div>
+                        <p className="text-[#f8c20b]/80 leading-relaxed whitespace-pre-wrap">
+                          {message}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-[#f8c20b]/60 italic">No message history available</p>
+                  )}
+                </div>
+              </section>
+
+              {/* Details Section - Layout mejorado para móviles */}
+              <section className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                <div>
+                  <h3 className="text-[#f8c20b] text-xl font-semibold mb-4">Contact Information</h3>
+                  <div className="bg-[#1a1812]/50 p-4 md:p-6 rounded-lg border border-[#f8c20b]/10">
+                    <p className="text-[#f8c20b]/80">
+                      {selectedProposal.contact || 'No contact information provided'}
+                    </p>
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-[#f8c20b] text-xl font-semibold mb-4">Flexibility Score</h3>
+                  <div className="bg-[#1a1812]/50 p-4 md:p-6 rounded-lg border border-[#f8c20b]/10">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-4">
+                        <div className="flex-1 h-3 bg-[#1a1812] rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-[#f8c20b] transition-all duration-500"
+                            style={{ width: `${(selectedProposal.flexibility || 0) * 10}%` }}
+                          />
+                        </div>
+                        <span className="text-[#f8c20b] font-semibold text-lg min-w-[3ch]">
+                          {selectedProposal.flexibility}/10
+                        </span>
+                      </div>
+                      <p className="text-[#f8c20b]/60 text-sm">
+                        Flexibility score indicates how adaptable this proposal is to changes
+                      </p>
                     </div>
                   </div>
                 </div>
-              ))}
+              </section>
+
+              {/* Metadata Section */}
+              <section className="border-t border-[#f8c20b]/10 pt-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <h4 className="text-[#f8c20b]/60 text-sm mb-1">Submitted On</h4>
+                    <p className="text-[#f8c20b]/80">
+                      {new Date(selectedProposal.timestamp).toLocaleDateString(undefined, {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-[#f8c20b]/60 text-sm mb-1">Wallet Address</h4>
+                    <p className="text-[#f8c20b]/80 font-mono">
+                      {truncateAddress(selectedProposal.wallet)}
+                    </p>
+                  </div>
+                </div>
+              </section>
             </div>
-          )}
+
+            {/* Footer con botones de acción - adaptado para móviles */}
+            <div className="sticky bottom-0 bg-[#1a1812] px-6 lg:px-8 py-4 border-t border-[#f8c20b]/10 flex flex-col sm:flex-row justify-end items-center gap-3 sm:gap-4">
+              <Button
+                onClick={() => setSelectedProposal(null)}
+                className="bg-transparent border border-[#f8c20b]/30 text-[#f8c20b] hover:bg-[#f8c20b]/10 w-full sm:w-auto order-2 sm:order-1"
+              >
+                Close
+              </Button>
+              <Button
+                className="bg-[#f8c20b] text-black hover:bg-[#f8c20b]/90 w-full sm:w-auto order-1 sm:order-2"
+              >
+                Vote for this Proposal
+              </Button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
+}
+
+function getStatusText(status: number): string {
+  switch (status) {
+    case 1: return 'New';
+    case 2: return 'In Review';
+    case 3: return 'In Voting';
+    case 4: return 'Rejected';
+    case 5: return 'Winner';
+    default: return 'Unknown';
+  }
+}
+
+function getStatusColor(status: number): string {
+  switch (status) {
+    case 1: return 'bg-blue-900/50 text-blue-300';
+    case 2: return 'bg-yellow-900/50 text-yellow-300';
+    case 3: return 'bg-purple-900/50 text-purple-300';
+    case 4: return 'bg-red-900/50 text-red-300';
+    case 5: return 'bg-green-900/50 text-green-300';
+    default: return 'bg-gray-900/50 text-gray-300';
+  }
+}
+
+function truncateAddress(address: string): string {
+  if (!address) return '';
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
 } 

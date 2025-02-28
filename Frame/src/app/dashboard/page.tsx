@@ -14,6 +14,8 @@ interface Proposal {
   flexibility: number;
   timestamp: string;
   status: number;
+  votes: number;
+  voters: string[];
 }
 
 type TabType = 'review' | 'voting' | 'winners';
@@ -28,55 +30,40 @@ export default function DashboardPage() {
   const { ready, authenticated } = usePrivy();
   const router = useRouter();
 
+  const loadProposals = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch('/api/proposal');
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to load proposals');
+      }
+
+      const data = await response.json();
+      
+      if (!Array.isArray(data)) {
+        throw new Error('Invalid response format: expected array');
+      }
+
+      setProposals(data);
+    } catch (error) {
+      console.error('Error loading proposals:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load proposals');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (ready && !authenticated) {
       router.push('/');
     } else if (ready && authenticated) {
       loadProposals();
     }
-  }, [ready, authenticated, router]);
-
-  const loadProposals = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await fetch('/api/proposal', {
-        headers: {
-          'Authorization': `Bearer ${await getAuthToken()}`
-        }
-      });
-
-      const responseText = await response.text();
-      let data;
-
-      try {
-        data = JSON.parse(responseText);
-      } catch (e) {
-        console.error('Error parsing response:', responseText);
-        throw new Error('Invalid response format from server', { cause: e });
-      }
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to load proposals');
-      }
-
-      console.log('Propuestas cargadas:', data);
-      
-      // Asegurarnos de que data sea un array
-      if (!Array.isArray(data)) {
-        console.error('Unexpected response format:', data);
-        throw new Error('Invalid response format: expected array');
-      }
-
-      setProposals(data);
-    } catch (err) {
-      console.error('Error loading proposals:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load proposals');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [ready, authenticated]);
 
   const handleReject = async (proposal: Proposal) => {
     try {
@@ -97,48 +84,75 @@ export default function DashboardPage() {
     }
   };
 
+  const handleDelete = async (proposal: Proposal) => {
+    try {
+      setLoading(true);
+      setError(null);
+      setSuccess(null);
+
+      const response = await fetch('/api/proposal', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          wallet: proposal.wallet
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to delete proposal');
+      }
+
+      await loadProposals(); // Recargar propuestas después de eliminar
+      setSelectedProposal(null);
+      setSuccess('Proposal successfully deleted');
+    } catch (error) {
+      console.error('Error deleting proposal:', error);
+      setError(error instanceof Error ? error.message : 'Failed to delete proposal');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleElevate = async (proposal: Proposal) => {
     try {
       setLoading(true);
       setError(null);
       setSuccess(null);
       
-      console.log("�� Elevating proposal status to 'Ready for blockchain'");
-      
-      // Solo actualizar en Redis con un estado especial (ej. status = 3)
+      // Actualizar el estado en Redis
       const updateResponse = await fetch('/api/proposal', {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await getAuthToken()}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           wallet: proposal.wallet,
-          status: 3  // 3: Listo para blockchain
+          status: 3,  // Cambiar a estado de votación
+          votes: 0,   // Inicializar contador de votos
+          voters: []  // Inicializar lista de votantes
         })
       });
 
       if (!updateResponse.ok) {
-        const updateData = await updateResponse.json();
-        throw new Error(updateData.error || 'Failed to update proposal status');
+        const errorData = await updateResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to update proposal status');
       }
 
       await loadProposals();
       setSelectedProposal(null);
-      setError(null);
-      setSuccess('Proposal successfully marked for blockchain elevation');
-    } catch (err) {
-      console.error('Error marking proposal:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update proposal');
+      setSuccess('Proposal successfully moved to voting phase');
+    } catch (error) {
+      console.error('Error updating proposal:', error);
+      setError(error instanceof Error ? error.message : 'Failed to update proposal');
     } finally {
       setLoading(false);
     }
   };
 
- 
-
   const filteredProposals = proposals.filter(proposal => {
-    console.log('Filtrando propuesta:', proposal);
     switch (activeTab) {
       case 'review': 
         // Propuestas en revisión (status 1 o 2)
@@ -242,6 +256,7 @@ export default function DashboardPage() {
                 onBack={() => setSelectedProposal(null)}
                 onReject={activeTab === 'review' ? handleReject : undefined}
                 onElevate={activeTab === 'review' ? handleElevate : undefined}
+                onDelete={activeTab === 'review' ? handleDelete : undefined}
               />
             ) : (
               filteredProposals.map((proposal) => (
@@ -263,6 +278,16 @@ export default function DashboardPage() {
                   <div className="text-[#f8c20b]/60 text-sm">
                     Wallet: {proposal.wallet.slice(0, 6)}...{proposal.wallet.slice(-4)}
                   </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(proposal.status)}`}>
+                      {getStatusText(proposal.status)}
+                    </span>
+                    {proposal.status === 3 && (
+                      <span className="text-[#f8c20b]/60 text-sm">
+                        Votes: {proposal.votes || 0}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))
             )}
@@ -277,12 +302,14 @@ function ProposalDetail({
   proposal, 
   onBack,
   onReject,
-  onElevate 
+  onElevate,
+  onDelete 
 }: { 
   proposal: Proposal;
   onBack: () => void;
   onReject?: (proposal: Proposal) => Promise<void>;
   onElevate?: (proposal: Proposal) => Promise<void>;
+  onDelete?: (proposal: Proposal) => Promise<void>;
 }) {
   return (
     <div className="bg-[#1a1812]/50 p-8 rounded-xl border border-[#f8c20b]/30
@@ -303,24 +330,38 @@ function ProposalDetail({
             Proposal Details
           </span>
         </div>
-        {onReject && onElevate && (
+        {(onReject || onElevate || onDelete) && (
           <div className="space-x-3">
-            <button
-              onClick={() => onReject(proposal)}
-              className="px-5 py-2.5 bg-[#2d1212] text-red-400 rounded-lg
-                       hover:bg-[#3d1818] transition-colors border border-red-900/30
-                       font-medium"
-            >
-              Reject Proposal
-            </button>
-            <button
-              onClick={() => onElevate(proposal)}
-              className="px-5 py-2.5 bg-[#f8c20b] text-black rounded-lg
-                       hover:bg-[#f8c20b]/90 transition-colors
-                       font-medium shadow-lg shadow-[#f8c20b]/10"
-            >
-              Send to Voting
-            </button>
+            {onDelete && (
+              <button
+                onClick={() => onDelete(proposal)}
+                className="px-5 py-2.5 bg-[#2d1212] text-red-400 rounded-lg
+                         hover:bg-[#3d1818] transition-colors border border-red-900/30
+                         font-medium"
+              >
+                Delete Proposal
+              </button>
+            )}
+            {onReject && (
+              <button
+                onClick={() => onReject(proposal)}
+                className="px-5 py-2.5 bg-[#2d1212] text-red-400 rounded-lg
+                         hover:bg-[#3d1818] transition-colors border border-red-900/30
+                         font-medium"
+              >
+                Reject Proposal
+              </button>
+            )}
+            {onElevate && (
+              <button
+                onClick={() => onElevate(proposal)}
+                className="px-5 py-2.5 bg-[#f8c20b] text-black rounded-lg
+                         hover:bg-[#f8c20b]/90 transition-colors
+                         font-medium shadow-lg shadow-[#f8c20b]/10"
+              >
+                Send to Voting
+              </button>
+            )}
           </div>
         )}
       </div>
