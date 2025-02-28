@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
-import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { usePrivy } from '@privy-io/react-auth';
+import { useRouter } from 'next/navigation';
+import { useAdminProtection } from '~/middleware/authMiddleware';
 import { Button } from "~/components/ui/Button";
 
 type ContextType = 'world' | 'laws' | 'personality' | 'characters' | 'examples';
@@ -42,9 +43,9 @@ const sections: ContextSection[] = [
 ];
 
 export default function ContextManager() {
-  const { data: session } = useSession();
   const { authenticated, login } = usePrivy();
-  const { wallets } = useWallets();
+  const { isAdmin } = useAdminProtection();
+  const router = useRouter();
   
   const [contextParts, setContextParts] = useState<Record<ContextType, string>>({
     world: '',
@@ -56,12 +57,9 @@ export default function ContextManager() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  const isAuthenticated = !!session || authenticated;
-  const author = session?.user?.fid || wallets?.[0]?.address || "anonymous";
-
   const handleSubmit = async () => {
-    if (!isAuthenticated || author === 'anonymous') {
-      setMessage('Please connect your wallet first');
+    if (!authenticated || !isAdmin) {
+      setMessage('Please sign in to access the context manager');
       return;
     }
 
@@ -72,7 +70,7 @@ export default function ContextManager() {
       const contextArray = Object.entries(contextParts).map(([type, content]) => ({
         type,
         content,
-        author: author.toString()
+        author: 'anonymous'
       }));
 
       const response = await fetch('/api/context', {
@@ -97,37 +95,7 @@ export default function ContextManager() {
     }
   };
 
-  // Cargar el contexto actual cuando se monta el componente
-  useEffect(() => {
-    if (isAuthenticated && author !== 'anonymous') {
-      fetch('/api/context')
-        .then(res => res.json())
-        .then(data => {
-          if (data && !data.error) {
-            const newContextParts: Record<ContextType, string> = {
-              world: '',
-              laws: '',
-              personality: '',
-              characters: '',
-              examples: ''
-            };
-
-            data.forEach((item: { type: ContextType; content: string }) => {
-              if (newContextParts.hasOwnProperty(item.type)) {
-                newContextParts[item.type] = item.content;
-              }
-            });
-
-            setContextParts(newContextParts);
-          }
-        })
-        .catch(err => {
-          console.error('Error loading context:', err);
-        });
-    }
-  }, [isAuthenticated, author]);
-
-  if (!isAuthenticated) {
+  if (!authenticated || !isAdmin) {
     return (
       <div className="min-h-screen w-full bg-cover bg-center bg-no-repeat flex flex-col items-center justify-center gap-8"
            style={{ backgroundImage: 'url("/container11.jpg")' }}>
