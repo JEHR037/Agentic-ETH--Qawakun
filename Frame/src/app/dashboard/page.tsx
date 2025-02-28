@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { useRouter } from 'next/navigation';
 import { getAuthToken } from '../utils/clientAuth';
+import { useAdminProtection } from '~/middleware/authMiddleware';
 
 interface Proposal {
   wallet: string;
@@ -21,13 +22,14 @@ interface Proposal {
 type TabType = 'review' | 'voting' | 'winners';
 
 export default function DashboardPage() {
+  const { isAdmin } = useAdminProtection();
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('review');
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
-  const { ready, authenticated } = usePrivy();
+  const { ready, authenticated, user } = usePrivy();
   const router = useRouter();
 
   const loadProposals = async () => {
@@ -64,6 +66,12 @@ export default function DashboardPage() {
       loadProposals();
     }
   }, [ready, authenticated]);
+
+  useEffect(() => {
+    if (user?.wallet?.address) {
+      console.log('Tu wallet address:', user.wallet.address);
+    }
+  }, [user]);
 
   const handleReject = async (proposal: Proposal) => {
     try {
@@ -177,19 +185,19 @@ export default function DashboardPage() {
     );
   }
 
-  if (!authenticated) {
+  if (!isAdmin) {
     return (
       <div className="min-h-screen w-full flex justify-center items-center bg-cover bg-center bg-no-repeat"
            style={{ backgroundImage: 'url("/container11.jpg")' }}>
         <div className="bg-gradient-to-b from-[#5d490d] to-[#040404] p-6 rounded-3xl shadow-2xl 
                     border border-[#7c7c7c] text-center">
-          <p className="text-[#f8c20b] mb-4">Please connect your wallet to access the dashboard.</p>
+          <p className="text-[#f8c20b] mb-4">You don't have permission to access this page.</p>
           <button
             onClick={() => router.push('/')}
             className="bg-[#f8c20b] text-black px-6 py-2 rounded-lg hover:bg-[#f8c20b]/80
                      transition-colors font-medium"
           >
-            Connect Wallet
+            Go Back
           </button>
         </div>
       </div>
