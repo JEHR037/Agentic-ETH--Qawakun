@@ -1,3 +1,4 @@
+"use client";
 import ProposalsView from '~/components/ProposalsView';
 
 export default function ProposalsPage() {

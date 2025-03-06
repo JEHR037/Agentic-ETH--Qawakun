@@ -17,10 +17,10 @@ interface Proposal {
 }
 
 interface Props {
-  hasClaimed: boolean;
+  hasClaimed?: boolean;
 }
 
-export default function ProposalsView({ hasClaimed }: Props) {
+export default function ProposalsView({ hasClaimed = true }: Props) {
   const { user, authenticated, login } = usePrivy();
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
