@@ -136,7 +136,7 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
     }
   }, [isFreeChat, isAuthenticated, checkExistingProposal]);
 
-  const handleSendMessage = async (customMessage?: string) => {
+  const handleSendMessage = async () => {
     if ((hasClaimed && !isFreeChat) || !author || author === 'anonymous') return;
     
     try {
@@ -147,7 +147,7 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
         },
         body: JSON.stringify({
           data: {
-            content: customMessage || message || 'es',
+            content: message || 'es',
             author: author
           }
         }),
@@ -170,7 +170,7 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
         setFreeChatMessages(prev => prev + 1);
       } else {
         setMessageCount(prev => prev + 1);
-        setMessageHistory(prev => [...prev, customMessage || message]);
+        setMessageHistory(prev => [...prev, message]);
       }
       
       setIsFirstInteraction(false);
@@ -793,22 +793,16 @@ function GameboyInterface({
   selectedLanguage,
   setSelectedLanguage,
   isFreeChat,
-  setIsFreeChat,
   freeChatMessages,
-  setFreeChatMessages,
   isMenuOpen,
   setIsMenuOpen,
-  showCreditsModal,
   setShowCreditsModal,
-  showProposalModal,
   setShowProposalModal,
-  hasActiveProposal,
-  setHasActiveProposal,
   onChangeWorld,
 }: {
   message: string;
   setMessage: (value: string) => void;
-  onSend: (customMessage?: string) => void;
+  onSend: () => void;
   onReset: () => void;
   apiResponse: string;
   setApiResponse: (value: string) => void;
@@ -1001,15 +995,47 @@ function GameboyInterface({
               <div className="w-full max-h-full overflow-hidden">
                 {isFirstInteraction ? (
                   isAuthenticated && !disabled ? (
-                    <LanguageSelector onSelect={(langCode) => {
-                      if (!author || author === 'anonymous') {
-                        setApiResponse("Please connect your wallet first");
-                        return;
-                      }
-                      setSelectedLanguage(langCode);
-                      setMessage("");
-                      onSend(langCode);
-                    }} />
+                    <LanguageSelector 
+                      onSelect={async (lang) => {
+                        if (!author || author === 'anonymous') {
+                          setApiResponse("Please connect your wallet first");
+                          return;
+                        }
+                        setSelectedLanguage(lang);
+                        try {
+                          const response = await fetch("/api/interactive", {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                              data: {
+                                content: lang,
+                                author: author
+                              }
+                            }),
+                          });
+
+                          const responseData = await response.json();
+                          
+                          if (!response.ok) {
+                            setApiResponse(responseData.message || "Error processing request");
+                            return;
+                          }
+
+                          const displayMessage = responseData.message || "Message received";
+
+                          setApiResponse(displayMessage);
+                          setMessage(""); 
+                          setMessageCount(prev => prev + 1);
+                          setMessageHistory(prev => [...prev, lang]);
+                          setIsFirstInteraction(false);
+                        } catch (err) {
+                          console.warn('Error sending message:', err);
+                          setApiResponse("Error processing request");
+                        }
+                      }}
+                    />
                   ) : (
                     <span className="animate-pulse text-2xl font-bold block text-center
                                    transition-all duration-1000 
@@ -1065,7 +1091,7 @@ function GameboyInterface({
                            rounded-lg px-3 py-2 text-sm"
                 />
                 <Button 
-                  onClick={() => onSend()} 
+                  onClick={onSend} 
                   disabled={!message}
                   className="w-full bg-gradient-to-r from-[#5d490d] to-[#f8c20b]
                            hover:from-[#5d490d]/90 hover:to-[#f8c20b]/90
@@ -1084,7 +1110,7 @@ function GameboyInterface({
                 <InteractionOptions 
                   onSelect={(option) => {
                     setMessage(option);
-                    onSend(option);
+                    onSend();
                   }}
                   messageCount={messageCount}
                   selectedLanguage={selectedLanguage}
