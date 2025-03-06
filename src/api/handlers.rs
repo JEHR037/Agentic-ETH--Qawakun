@@ -16,7 +16,6 @@ use super::proposals::{
 use redis::AsyncCommands;
 use ethers::types::U256;
 use serde_json::json;
-use super::game_options::{handle_game_options_get, handle_game_options_set};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Post {
@@ -431,102 +430,6 @@ pub async fn handle_context_update(
     }
 }
 
-pub async fn handle_context_get(
-    req: HttpRequest,
-    redis_client: web::Data<redis::Client>,
-) -> impl Responder {
-    println!("\n📖 GET /context - Obteniendo contextos");
-
-    if let Err(response) = verify_token(&req).await {
-        println!("❌ Token verification failed");
-        return response;
-    }
-
-    let mut con = match redis_client.get_async_connection().await {
-        Ok(con) => {
-            println!("✅ Conexión Redis establecida");
-            con
-        },
-        Err(e) => {
-            println!("❌ Error de conexión Redis: {:?}", e);
-            return HttpResponse::InternalServerError().body("Redis connection error");
-        }
-    };
-
-    // Intentar obtener el texto completo del contexto
-    let context_string: Option<String> = match con.get("context-text").await {
-        Ok(content) => {
-            println!("✅ Contexto recuperado de Redis");
-            content
-        },
-        Err(e) => {
-            println!("⚠️ Error obteniendo contexto de Redis: {:?}", e);
-            None
-        }
-    };
-
-    // Si hay contenido, procesarlo para dividir en secciones
-    if let Some(content) = context_string {
-        // Crear una lista de secciones y sus identificadores
-        let sections = vec![
-            ("World Description", "world"),
-            ("Laws of the Worlds", "laws"),
-            ("Personality and Behavior", "personality"),
-            ("Characters and Relations", "characters"),
-            ("Examples of Flow Interactions", "examples")
-        ];
-        
-        let mut context_parts = Vec::new();
-        
-        // Para cada sección, buscar el contenido entre los marcadores
-        for (i, (section_title, section_type)) in sections.iter().enumerate() {
-            // El formato real en Redis es "Título\nContenido", así que buscamos eso
-            let full_pattern = format!("{}\n", section_title);
-            
-            if let Some(start_idx) = content.find(&full_pattern) {
-                // Avanzar después del patrón (título + salto de línea)
-                let content_start = start_idx + full_pattern.len();
-                
-                // Determinar dónde termina esta sección
-                let content_end = if i < sections.len() - 1 {
-                    // Si no es la última sección, buscar el inicio de la siguiente
-                    let next_pattern = format!("\n\n{}\n", sections[i + 1].0);
-                    if let Some(next_idx) = content[content_start..].find(&next_pattern) {
-                        content_start + next_idx
-                    } else {
-                        content.len() // Si no encuentra la siguiente, usar hasta el final
-                    }
-                } else {
-                    content.len() // Si es la última sección, usar hasta el final
-                };
-                
-                // Extraer y limpiar el texto
-                let section_content = content[content_start..content_end].trim().to_string();
-                
-                println!("✓ Sección '{}' encontrada", section_title);
-                context_parts.push(serde_json::json!({
-                    "type": section_type,
-                    "content": section_content
-                }));
-            } else {
-                println!("⚠️ No se encontró la sección '{}'", section_title);
-                // Agregar la sección con contenido vacío para mantener la estructura
-                context_parts.push(serde_json::json!({
-                    "type": section_type,
-                    "content": ""
-                }));
-            }
-        }
-        
-        println!("✅ Contexto procesado y dividido en {} partes", context_parts.len());
-        HttpResponse::Ok().json(context_parts)
-    } else {
-        // Si no hay contexto, devolver un arreglo vacío
-        println!("ℹ️ No se encontró contexto en Redis");
-        HttpResponse::Ok().json(Vec::<serde_json::Value>::new())
-    }
-}
-
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("")
@@ -540,9 +443,6 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .route("/proposalsw", web::get().to(handle_proposals_winners))
             .route("/health", web::get().to(health_check))
             .route("/context", web::post().to(handle_context_update))
-            .route("/context", web::get().to(handle_context_get))
-            .route("/game-options", web::get().to(handle_game_options_get))
-            .route("/game-options", web::post().to(handle_game_options_set))
     );
 }
 
