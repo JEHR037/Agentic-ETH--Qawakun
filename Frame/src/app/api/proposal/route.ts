@@ -5,7 +5,7 @@ import { getAuthToken } from '../utils/auth';
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
 
 // Get proposals from Redis
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const token = await getAuthToken();
     const response = await fetch(`${BACKEND_URL}/proposals`, {
