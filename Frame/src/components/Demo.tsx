@@ -12,6 +12,8 @@ import gameOptions from '~/data/gameOptions.json';
 import ProposalsView from './ProposalsView';
 import { Proposal } from "~/types/interfaces";
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 export default function Demo({ title }: { title?: string } = { title: "Qawakun" }) {
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
   const [context, setContext] = useState<Context.FrameContext>();
@@ -37,6 +39,7 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
   });
   const [hasActiveProposal, setHasActiveProposal] = useState(false);
   const [showProposalsView, setShowProposalsView] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   
   const { data: session } = useSession();
   const { authenticated, login, user } = usePrivy();
@@ -140,6 +143,8 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
     if ((hasClaimed && !isFreeChat) || !author || author === 'anonymous') return;
     
     try {
+      setIsSending(true);
+      
       const response = await fetch("/api/interactive", {
         method: "POST",
         headers: {
@@ -177,6 +182,8 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
     } catch (err) {
       console.warn('Error sending message:', err);
       setApiResponse("Error processing request");
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -354,6 +361,7 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
                 hasActiveProposal={hasActiveProposal}
                 setHasActiveProposal={setHasActiveProposal}
                 onChangeWorld={handleChangeWorld}
+                isSending={isSending}
               />
             )}
           </div>
@@ -614,72 +622,54 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
 }
 
 function TypewriterText({ text }: { text: string }) {
+  const CHARS_PER_PAGE = 500;
   const [currentPage, setCurrentPage] = useState(0);
-  const CHARS_PER_PAGE = 150; // Ajusta este número según lo que se vea mejor en la pantalla
   
+  // Calcular páginas
   const pages = useMemo(() => {
-    const words = text.split(' ');
-    const pages = [];
-    let currentPage = '';
-    
-    for (const word of words) {
-      if ((currentPage + ' ' + word).length <= CHARS_PER_PAGE) {
-        currentPage += (currentPage ? ' ' : '') + word;
-      } else {
-        pages.push(currentPage);
-        currentPage = word;
-      }
-    }
-    if (currentPage) {
-      pages.push(currentPage);
-    }
-    return pages;
+    const totalPages = Math.ceil(text.length / CHARS_PER_PAGE);
+    return Array.from({ length: totalPages }, (_, i) => {
+      const start = i * CHARS_PER_PAGE;
+      return text.slice(start, start + CHARS_PER_PAGE);
+    });
   }, [text]);
 
-  const hasMultiplePages = pages.length > 1;
+  const handleNextPage = () => {
+    if (currentPage < pages.length - 1) {
+      setCurrentPage(prev => prev + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 0) {
+      setCurrentPage(prev => prev - 1);
+    }
+  };
 
   return (
-    <div className="flex flex-col items-center space-y-4 select-none">
-      <div className="whitespace-pre-wrap break-words min-h-[200px] flex items-center justify-center select-none">
-        {pages[currentPage] || ''}
+    <div className="relative">
+      <div className="min-h-[120px]">
+        {pages[currentPage]}
       </div>
       
-      {hasMultiplePages && (
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+      {pages.length > 1 && (
+        <div className="flex justify-between items-center mt-4">
+          <button 
+            onClick={handlePrevPage}
             disabled={currentPage === 0}
-            className={`
-              relative px-4 py-2 rounded-lg
-              ${currentPage === 0 
-                ? 'bg-[#1a1812]/50 text-[#f8c20b]/50' 
-                : 'bg-[#1a1812]/50 text-[#f8c20b] hover:bg-[#1a1812]/70'}
-              transition-all duration-200
-              border border-[#f8c20b]/30
-              disabled:cursor-not-allowed
-            `}
+            className={`px-2 py-1 text-xs ${currentPage === 0 ? 'text-[#7c7c7c]' : 'text-[#f8c20b]'}`}
           >
-            ◀
+            ← Prev
           </button>
-          
-          <span className="text-[#f8c20b] text-sm">
+          <span className="text-xs text-[#7c7c7c]">
             {currentPage + 1} / {pages.length}
           </span>
-          
-          <button
-            onClick={() => setCurrentPage(prev => Math.min(pages.length - 1, prev + 1))}
+          <button 
+            onClick={handleNextPage}
             disabled={currentPage === pages.length - 1}
-            className={`
-              relative px-4 py-2 rounded-lg
-              ${currentPage === pages.length - 1 
-                ? 'bg-[#1a1812]/50 text-[#f8c20b]/50' 
-                : 'bg-[#1a1812]/50 text-[#f8c20b] hover:bg-[#1a1812]/70'}
-              transition-all duration-200
-              border border-[#f8c20b]/30
-              disabled:cursor-not-allowed
-            `}
+            className={`px-2 py-1 text-xs ${currentPage === pages.length - 1 ? 'text-[#7c7c7c]' : 'text-[#f8c20b]'}`}
           >
-            ▶
+            Next →
           </button>
         </div>
       )}
@@ -805,6 +795,7 @@ function GameboyInterface({
   hasActiveProposal,
   setHasActiveProposal,
   onChangeWorld,
+  isSending,
 }: {
   message: string;
   setMessage: (value: string) => void;
@@ -836,6 +827,7 @@ function GameboyInterface({
   hasActiveProposal: boolean;
   setHasActiveProposal: (value: boolean) => void;
   onChangeWorld: () => void;
+  isSending: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -868,6 +860,27 @@ function GameboyInterface({
       document.head.removeChild(meta);
     };
   }, []);
+
+  // Guardar el historial completo de respuestas
+  const [responseHistory, setResponseHistory] = useState<string[]>([]);
+  
+  // Actualizar historial cuando cambia apiResponse
+  useEffect(() => {
+    if (apiResponse && apiResponse !== "Choose language" && !isFirstInteraction) {
+      // Evitar duplicados (por ejemplo, cuando se recarga el componente)
+      if (!responseHistory.includes(apiResponse)) {
+        setResponseHistory(prev => [...prev, apiResponse]);
+      }
+    }
+  }, [apiResponse, isFirstInteraction, responseHistory]);
+
+  // Generar el texto completo combinando todas las respuestas
+  const fullResponseText = useMemo(() => {
+    return responseHistory.map((resp, index) => {
+      // Formateamos cada respuesta para mostrarla como un párrafo separado
+      return `RESPUESTA ${index + 1}:\n\n${resp}\n\n${index < responseHistory.length - 1 ? '---------------------\n' : ''}`;
+    }).join('\n');
+  }, [responseHistory]);
 
   return (
     <div className="relative">
@@ -1009,6 +1022,7 @@ function GameboyInterface({
                       setSelectedLanguage(langCode);
                       setMessage("");
                       onSend(langCode);
+                      setIsFirstInteraction(false);
                     }} />
                   ) : (
                     <span className="animate-pulse text-2xl font-bold block text-center
@@ -1022,7 +1036,7 @@ function GameboyInterface({
                   )
                 ) : (
                   <div className="font-mono text-[#f8c20b] text-center">
-                    <TypewriterText text={apiResponse} />
+                    <TypewriterText text={fullResponseText} />
                   </div>
                 )}
               </div>
@@ -1066,7 +1080,7 @@ function GameboyInterface({
                 />
                 <Button 
                   onClick={() => onSend()} 
-                  disabled={!message}
+                  disabled={!message || isSending}
                   className="w-full bg-gradient-to-r from-[#5d490d] to-[#f8c20b]
                            hover:from-[#5d490d]/90 hover:to-[#f8c20b]/90
                            disabled:from-[#545454] disabled:to-[#7c7c7c]
@@ -1074,12 +1088,19 @@ function GameboyInterface({
                            transition-all duration-200
                            shadow-lg shadow-[#f8c20b]/20"
                 >
-                  Send
+                  {isSending ? (
+                    <span className="flex items-center justify-center">
+                      <span className="animate-spin h-4 w-4 border-b-2 border-[#040404] mr-2 rounded-full"></span>
+                      Sending...
+                    </span>
+                  ) : (
+                    'Send'
+                  )}
                 </Button>
               </div>
             </div>
 
-            {!isFirstInteraction && messageCount > 0 && messageCount < 7 && !disabled && (
+            {!isFirstInteraction && messageCount > 0 && messageCount < 7 && !disabled && !isSending && (
               <div className="bg-[#040404]/50 p-4 rounded-xl border border-[#545454]">
                 <InteractionOptions 
                   onSelect={(option) => {
@@ -1088,6 +1109,7 @@ function GameboyInterface({
                   }}
                   messageCount={messageCount}
                   selectedLanguage={selectedLanguage}
+                  disabled={isSending}
                 />
               </div>
             )}
@@ -1101,13 +1123,19 @@ function GameboyInterface({
 function InteractionOptions({ 
   onSelect, 
   messageCount, 
-  selectedLanguage 
+  selectedLanguage,
+  disabled = false
 }: { 
   onSelect: (option: string) => void;
   messageCount: number;
   selectedLanguage: string;
+  disabled?: boolean;
 }) {
-  const language = gameOptions.languages.find(lang => lang.code === selectedLanguage);
+  const language = useMemo(() => 
+    gameOptions.languages.find(lang => lang.code === selectedLanguage),
+    [selectedLanguage]
+  );
+  
   const currentOptions = language?.interactions[messageCount - 1]?.options || [];
 
   return (
@@ -1116,16 +1144,15 @@ function InteractionOptions({
         <button
           key={option.code}
           onClick={() => onSelect(option.name)}
+          disabled={disabled}
           className={`
             w-full
             relative px-3 py-2 rounded-lg
             bg-[#1a1812]/50 text-[#f8c20b]
             transition-all duration-200
-            hover:bg-[#1a1812]/70
-            hover:shadow-lg hover:shadow-[#f8c20b]/20
+            ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#1a1812]/70 hover:shadow-lg hover:shadow-[#f8c20b]/20 transform hover:scale-105'}
             border border-[#f8c20b]/30
             text-[11px] font-medium
-            transform hover:scale-105
             flex items-center justify-center
             min-h-[3rem]
             leading-tight
