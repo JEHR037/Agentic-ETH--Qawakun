@@ -691,8 +691,7 @@ function LanguageSelector({ onSelect }: { onSelect: (language: string) => void }
   const [selectedIndex, setSelectedIndex] = useState(0);
   const languages = [
     { code: 'es', name: 'Español' },
-    { code: 'en', name: 'English' },
-    { code: 'fr', name: 'Français' }
+    { code: 'en', name: 'English' }
   ];
 
   // Manejar navegación con teclado
