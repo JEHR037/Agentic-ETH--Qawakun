@@ -3,7 +3,7 @@ const password = process.env.APP_PASSWORD;
 
 export async function getAuthToken() {
   try {
-    const response = await fetch(`${process.env.BACKEND_URL}/login`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/login`, {
       method: 'GET',
       credentials: 'include',
       headers: {

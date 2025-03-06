@@ -4,7 +4,7 @@ import { getAuthToken } from '../utils/auth';
 import { cookies } from 'next/headers';
 import { isAdmin } from '~/lib/auth';
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
 
 export async function GET(request: NextRequest) {
   try {
