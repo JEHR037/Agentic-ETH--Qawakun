@@ -884,8 +884,31 @@ pub async fn handle_proposal_update(
                     println!("❌ No se proporcionó wallet del votante");
                     HttpResponse::BadRequest().body("Se requiere wallet del votante")
                 }
+            } else if update_data.update.action == "status" {
+                println!("📝 Procesando actualización de estado");
+                if let Some(new_status) = update_data.update.status {
+                    println!("📝 Actualizando estado a: {}", new_status);
+                    proposal.status = new_status;
+                    
+                    // Guardar la propuesta actualizada
+                    println!("💾 Guardando propuesta actualizada en Redis");
+                    if let Err(e) = con.hset::<_, _, _, ()>(
+                        "proposals",
+                        &update_data.wallet,
+                        serde_json::to_string(&proposal).unwrap(),
+                    ).await {
+                        println!("❌ Error guardando propuesta en Redis: {:?}", e);
+                        return HttpResponse::InternalServerError().body("Error updating proposal");
+                    }
+
+                    println!("✅ Estado actualizado exitosamente");
+                    return HttpResponse::Ok().json(proposal);
+                } else {
+                    println!("❌ No se proporcionó nuevo estado");
+                    return HttpResponse::BadRequest().body("Se requiere nuevo estado");
+                }
             } else {
-                // Manejar otras acciones si es necesario
+                println!("❌ Acción no soportada: {}", update_data.update.action);
                 HttpResponse::BadRequest().body("Acción no soportada")
             }
         },

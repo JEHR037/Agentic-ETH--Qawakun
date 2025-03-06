@@ -153,7 +153,11 @@ pub async fn handle_nft_claim_post(
             };
 
             // Mintear el NFT
-            match nft_manager.mint_nft_with_encrypted_data(to_address, user_data).await {
+            match nft_manager.mint_nft_with_encrypted_data(
+                to_address,
+                user_data,
+                false  // NO es un NFT de voto
+            ).await {
                 Ok(receipt) => {
                     println!("✅ NFT minteado y transferido exitosamente");
                     // Obtener el token ID del evento de mint
@@ -224,19 +228,15 @@ pub async fn handle_nft_claim_post(
 pub async fn mint_nft(voter_wallet: String) -> Result<NFTInfo, Box<dyn std::error::Error>> {
     println!("🎨 Iniciando proceso de minteo de NFT para voto");
     
-    // Obtener instancia del NftManager
     let nft_manager = NftManager::new().await?;
-    
-    // Convertir la wallet a Address
     let to_address = voter_wallet.parse::<Address>()
         .map_err(|e| format!("Error al parsear wallet address: {}", e))?;
 
-    // Crear UserData para el NFT
     let user_data = UserData {
-        username: format!("Voter {}", &voter_wallet[0..6]), // Primeros 6 caracteres de la wallet
-        email: String::new(), // No necesitamos email para votos
+        username: format!("Voter {}", &voter_wallet[0..6]),
+        email: String::new(),
         wallet_address: voter_wallet.clone(),
-        avatar_url: String::new(), // No necesitamos avatar para votos
+        avatar_url: String::new(),
         additional_data: Some(serde_json::json!({
             "type": "vote_nft",
             "timestamp": chrono::Utc::now().timestamp(),
@@ -244,11 +244,10 @@ pub async fn mint_nft(voter_wallet: String) -> Result<NFTInfo, Box<dyn std::erro
         })),
     };
 
-    // Mintear el NFT usando la función existente
-    println!("📤 Minteando NFT con datos de voto");
     match nft_manager.mint_nft_with_encrypted_data(
         to_address,
-        user_data
+        user_data,
+        true  // Es un NFT de voto - no validar balance existente
     ).await {
         Ok(receipt) => {
             println!("✅ NFT minteado exitosamente");

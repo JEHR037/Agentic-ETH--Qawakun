@@ -233,12 +233,15 @@ impl NftManager {
         &self,
         to: Address,
         user_data: UserData,
+        is_vote_nft: bool,
     ) -> Result<TransactionReceipt> {
-        // Verificar si el usuario ya tiene NFTs
-        let balance = self.get_balance(to).await?;
-        if !balance.is_zero() {
-            println!("👛 Usuario ya tiene {} NFTs", balance);
-            return Err(anyhow::anyhow!("User already has an NFT"));
+        // Solo verificar balance si NO es un NFT de voto
+        if !is_vote_nft {
+            let balance = self.get_balance(to).await?;
+            if !balance.is_zero() {
+                println!("👛 Usuario ya tiene {} NFTs", balance);
+                return Err(anyhow::anyhow!("User already has an NFT"));
+            }
         }
 
         // Verificar que la wallet del contrato tiene fondos para el gas

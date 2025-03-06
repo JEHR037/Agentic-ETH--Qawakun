@@ -16,8 +16,11 @@ interface Proposal {
   voters?: string[];
 }
 
+interface Props {
+  hasClaimed: boolean;
+}
 
-export default function ProposalsView() {
+export default function ProposalsView({ hasClaimed }: Props) {
   const { user, authenticated, login } = usePrivy();
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
@@ -40,13 +43,13 @@ export default function ProposalsView() {
       if (!response.ok) throw new Error('Failed to load proposals');
       const data = await response.json();
       
-      // Ordenar propuestas: primero las que están en votación (status 3)
-      const sortedProposals = data.sort((a: Proposal, b: Proposal) => {
-        if (a.status === 3 && b.status !== 3) return -1;
-        if (a.status !== 3 && b.status === 3) return 1;
-        // Si ambas tienen el mismo status, ordenar por timestamp (más recientes primero)
-        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-      });
+      // Filtrar solo propuestas con status 3 (In Voting)
+      const filteredProposals = data.filter((p: Proposal) => p.status === 3);
+      
+      // Ordenar por timestamp (más recientes primero)
+      const sortedProposals = filteredProposals.sort((a: Proposal, b: Proposal) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
       
       setProposals(sortedProposals);
     } catch (error) {
@@ -127,6 +130,14 @@ export default function ProposalsView() {
     }
   };
 
+  if (!hasClaimed) {
+    return (
+      <div className="text-center p-10">
+        <p className="text-[#f8c20b]/80 text-xl">You need to claim your NFT first to view and vote on proposals</p>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
@@ -146,7 +157,7 @@ export default function ProposalsView() {
   if (proposals.length === 0) {
     return (
       <div className="text-center p-10">
-        <p className="text-[#f8c20b]/80 text-xl">No proposals found in voting phase</p>
+        <p className="text-[#f8c20b]/80 text-xl">No hay propuestas en fase de votación</p>
       </div>
     );
   }

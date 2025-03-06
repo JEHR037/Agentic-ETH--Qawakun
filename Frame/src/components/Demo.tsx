@@ -11,6 +11,7 @@ import { usePrivy, useWallets } from '@privy-io/react-auth';
 import gameOptions from '~/data/gameOptions.json';
 import ProposalsView from './ProposalsView';
 import { Proposal } from "~/types/interfaces";
+import { useRouter } from "next/navigation";
 
 export default function Demo({ title }: { title?: string } = { title: "Qawakun" }) {
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
@@ -37,10 +38,12 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
   });
   const [hasActiveProposal, setHasActiveProposal] = useState(false);
   const [showProposalsView, setShowProposalsView] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { data: session } = useSession();
   const { authenticated, login, user } = usePrivy();
   const { wallets } = useWallets();
+  const router = useRouter();
   
   const author = session?.user?.fid || wallets?.[0]?.address || "anonymous";
   const isAuthenticated = !!session || authenticated;
@@ -287,6 +290,75 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
     }
   }, [user]);
 
+  // Función para manejar el envío de propuestas
+  const handleProposalSubmit = async () => {
+    console.log("Proposal submit clicked", proposalData);
+    
+    if (!author || author === 'anonymous') {
+      console.warn('User not authenticated');
+      setApiResponse("You need to authenticate first.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setApiResponse("Sending your proposal...");
+    
+    try {
+      const timestamp = new Date().toISOString();
+      
+      const response = await fetch("/api/proposal", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          wallet: author,
+          fid: session?.user?.fid || 0,
+          proposal_type: proposalData.type,
+          description: proposalData.description,
+          flexibility: proposalData.flexibility,
+          contact: proposalData.contact,
+          message_history: messageHistory,
+          timestamp,
+          status: 1
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.warn('Error submitting proposal:', error);
+        setApiResponse("Error submitting proposal. Please try again.");
+        return;
+      }
+
+      // Restablecer los datos de la propuesta
+      setProposalData({
+        type: '',
+        description: '',
+        flexibility: 5,
+        contact: ''
+      });
+      
+      // Cerrar el modal y mostrar mensaje de éxito
+      setShowProposalModal(false);
+      setApiResponse("🎉 Congratulations! Your proposal has been submitted successfully!");
+      
+      // Marcar como propuesta activa
+      setHasActiveProposal(true);
+
+      // Esperar 2 segundos antes de redirigir
+      setTimeout(() => {
+        router.push('/');
+      }, 2000);
+
+    } catch (err) {
+      console.error('Error submitting proposal:', err);
+      setApiResponse("Error submitting proposal. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (!isSDKLoaded) {
     return <div>Loading...</div>;
   }
@@ -308,12 +380,15 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
           <div className="relative">
             <button
               onClick={() => setShowProposalsView(!showProposalsView)}
-              className="absolute -left-12 top-8 w-10 h-10
+              className={`absolute -left-12 top-8 w-10 h-10
                          bg-[#1a1812]/50 hover:bg-[#1a1812]/70
                          border border-[#f8c20b]/30 rounded-lg
                          flex items-center justify-center
                          transition-all duration-200
-                         group"
+                         group
+                         ${!hasClaimed && 'opacity-50 cursor-not-allowed'}`}
+              disabled={!hasClaimed}
+              title={!hasClaimed ? "You need to claim your NFT first" : "View proposals"}
             >
               <div className="transform transition-transform group-hover:scale-110">
                 <span className="text-[#f8c20b] text-xl">🗳️</span>
@@ -321,7 +396,7 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
             </button>
 
             {showProposalsView ? (
-              <ProposalsView />
+              <ProposalsView hasClaimed={hasClaimed} />
             ) : (
               <GameboyInterface 
                 message={message}
@@ -400,19 +475,21 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
             </Button>
           )}
 
-          {/* Nuevo botón para Make a Proposal */}
+          {/* Botón para Make a Proposal */}
           {isFreeChat && freeChatMessages >= 4 && (
             <Button
               onClick={() => setShowProposalModal(true)}
-              className="w-full mt-4 bg-gradient-to-r from-[#f8d54b] to-[#8b7435]
-                       hover:from-[#f8d54b]/80 hover:to-[#8b7435]/80
-                       text-[#1a1812] font-bold py-3 rounded-lg
-                       transition-all duration-200
-                       shadow-lg shadow-[#f8d54b]/20
-                       border border-[#f8d54b]/10
-                       relative"
+              disabled={!hasClaimed}
+              className={`w-full mt-4 bg-gradient-to-r from-[#f8d54b] to-[#8b7435]
+                         hover:from-[#f8d54b]/80 hover:to-[#8b7435]/80
+                         text-[#040404] font-medium py-2 rounded-lg
+                         transition-all duration-200
+                         shadow-lg shadow-[#f8c20b]/20
+                         relative
+                         ${!hasClaimed && 'opacity-50 cursor-not-allowed'}`}
+              title={!hasClaimed ? "You need to claim your NFT first" : "Make a proposal"}
             >
-              MAKE A PROPOSAL
+              {!hasClaimed ? "CLAIM NFT TO MAKE PROPOSALS" : "MAKE A PROPOSAL"}
             </Button>
           )}
         </div>
@@ -473,9 +550,8 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
 
       {/* Modal de Propuesta */}
       {showProposalModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
-          <div className="bg-gradient-to-b from-[#5d490d] to-[#040404] p-6 rounded-3xl 
-                         shadow-2xl border border-[#f8c20b] max-w-md w-full overflow-y-auto max-h-[90vh]">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#1a1812] border border-[#f8c20b]/30 rounded-xl max-w-md w-full p-6 shadow-lg relative">
             <h2 className="text-2xl font-bold text-[#f8c20b] mb-4 text-center">
               Submit Proposal
             </h2>
@@ -564,46 +640,25 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
                 Cancel
               </Button>
               <Button
-                onClick={async () => {
-                  try {
-                    const timestamp = new Date().toISOString();
-
-                    const response = await fetch("/api/proposal", {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                      },
-                      body: JSON.stringify({
-                        wallet: author,
-                        fid: session?.user?.fid || 0,
-                        proposal_type: proposalData.type,
-                        description: proposalData.description,
-                        flexibility: proposalData.flexibility,
-                        contact: proposalData.contact,
-                        message_history: messageHistory,
-                        timestamp: timestamp,
-                        status: 1
-                      }),
-                    });
-
-                    if (!response.ok) {
-                      const errorData = await response.json();
-                      throw new Error(errorData.error || 'Failed to submit proposal');
-                    }
-
-                    setShowProposalModal(false);
-                    setProposalData({ type: '', description: '', flexibility: 5, contact: '' });
-                    setApiResponse("Thank you for your proposal! We'll review it carefully.");
-                  } catch (error) {
-                    console.error('Error submitting proposal:', error);
-                    setApiResponse("Error submitting proposal. Please try again.");
-                  }
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log("Submit button clicked");
+                  handleProposalSubmit();
                 }}
+                disabled={!proposalData.type || !proposalData.description || isSubmitting}
                 className="flex-1 bg-[#f8c20b] text-[#040404] px-4 py-2 rounded-lg
-                          hover:bg-[#f8c20b]/90 transition-colors"
-                disabled={!proposalData.type || !proposalData.description || !proposalData.contact}
+                          hover:bg-[#f8c20b]/90 transition-colors
+                          disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Submit
+                {isSubmitting ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-[#040404] border-t-transparent rounded-full animate-spin" />
+                    <span>Submitting...</span>
+                  </div>
+                ) : (
+                  'Submit'
+                )}
               </Button>
             </div>
           </div>
