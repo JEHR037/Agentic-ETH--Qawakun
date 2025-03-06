@@ -39,7 +39,7 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
   const [showProposalsView, setShowProposalsView] = useState(false);
   
   const { data: session } = useSession();
-  const { authenticated, login } = usePrivy();
+  const { authenticated, login, user } = usePrivy();
   const { wallets } = useWallets();
   
   const author = session?.user?.fid || wallets?.[0]?.address || "anonymous";
@@ -278,6 +278,14 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
 
   // Asegurarnos de que author sea siempre string
   const authorString = typeof author === 'number' ? author.toString() : author;
+
+  useEffect(() => {
+    if (user?.wallet?.address) {
+      console.log('Tu wallet address:', user.wallet.address);
+      // Guardar la dirección en localStorage
+      localStorage.setItem('userWalletAddress', user.wallet.address);
+    }
+  }, [user]);
 
   if (!isSDKLoaded) {
     return <div>Loading...</div>;

@@ -37,13 +37,24 @@ pub struct ContractProposalResponse {
 pub struct Proposal {
     pub wallet: String,
     pub fid: u64,
-    pub proposal_type: String,  // WORLD, CHARACTERS, LAWS
+    pub proposal_type: String,
     pub description: String,
-    pub flexibility: i32,       // 1-10
+    pub flexibility: i32,
     pub contact: String,
     pub message_history: Vec<String>,
-    pub timestamp: String,      // ISO timestamp
-    pub status: i32,           // 1: nueva, 2: en revisión, 3: en votación, 4: rechazada
+    pub timestamp: String,
+    pub status: i32,
+    pub votes: Option<i32>,
+    pub voters: Option<Vec<String>>,
+    pub vote_nfts: Option<Vec<VoteNFT>>,
+}
+
+// Agregar la estructura VoteNFT aquí también
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct VoteNFT {
+    pub token_id: String,
+    pub voter_wallet: String,
+    pub timestamp: String,
 }
 
 // Implementar manualmente para ContractProposal
@@ -206,6 +217,9 @@ impl ProposalManager {
                 .unwrap_or_default(),
             timestamp: contract_proposal.timestamp.to_string(),
             status: 1, // Este campo podría venir de otra fuente
+            votes: None,
+            voters: None,
+            vote_nfts: None,
         })
     }
 
@@ -533,5 +547,122 @@ pub async fn handle_proposal_status_update(
             HttpResponse::Ok().json(proposal)
         },
         None => HttpResponse::NotFound().body("Proposal not found"),
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct VoteRequest {
+    pub proposal_wallet: String,
+    pub voter_wallet: String,
+    pub nft_id: Option<String>,
+}
+
+pub async fn handle_proposal_vote(
+    req: HttpRequest,
+    vote_data: web::Json<VoteRequest>,
+    redis_client: web::Data<redis::Client>,
+) -> impl Responder {
+    println!("🚀 Iniciando handle_proposal_vote");
+    println!("📄 Request path: {}", req.path());
+    println!("📄 Request method: {}", req.method());
+    println!("📄 Request headers: {:?}", req.headers());
+    println!("📦 Vote Data Recibida: {:?}", vote_data);
+
+    if let Err(e) = verify_token(&req).await {
+        println!("🔒 Error de autenticación: {:?}", e);
+        return HttpResponse::Unauthorized().body("Token inválido");
+    }
+
+    let mut con = match redis_client.get_async_connection().await {
+        Ok(con) => {
+            println!("✅ Conexión Redis establecida");
+            con
+        },
+        Err(e) => {
+            println!("❌ Error de conexión a Redis: {:?}", e);
+            return HttpResponse::InternalServerError().body("Redis connection error");
+        }
+    };
+
+    println!("🔍 Buscando propuesta con wallet: {}", vote_data.proposal_wallet);
+    
+    let proposal_str: Option<String> = match con.hget("proposals", &vote_data.proposal_wallet).await {
+        Ok(p) => {
+            println!("📝 Propuesta encontrada en Redis: {:?}", p);
+            p
+        },
+        Err(e) => {
+            println!("❌ Error obteniendo propuesta de Redis: {:?}", e);
+            return HttpResponse::InternalServerError().body("Error getting proposal");
+        }
+    };
+
+    match proposal_str {
+        Some(str) => {
+            let mut proposal: Proposal = match serde_json::from_str(&str) {
+                Ok(p) => {
+                    println!("✅ Propuesta parseada correctamente: {:?}", p);
+                    p
+                },
+                Err(e) => {
+                    println!("❌ Error parseando propuesta: {:?}", e);
+                    return HttpResponse::InternalServerError().body("Error parsing proposal");
+                }
+            };
+
+            // Verificar estado actual de votos
+            println!("📊 Estado actual - Votos: {:?}, Votantes: {:?}", proposal.votes, proposal.voters);
+
+            if proposal.voters.is_none() {
+                println!("ℹ️ Inicializando array de votantes");
+                proposal.voters = Some(Vec::new());
+            }
+            
+            if proposal.votes.is_none() {
+                println!("ℹ️ Inicializando contador de votos");
+                proposal.votes = Some(0);
+            }
+
+            if let Some(voters) = &proposal.voters {
+                if voters.contains(&vote_data.voter_wallet) {
+                    println!("⚠️ Votante ya registrado: {}", vote_data.voter_wallet);
+                    return HttpResponse::BadRequest().body("Ya has votado por esta propuesta");
+                }
+            }
+
+            // Actualizar votos y votantes
+            if let Some(votes) = proposal.votes {
+                proposal.votes = Some(votes + 1);
+                println!("📈 Incrementando votos a: {}", votes + 1);
+            }
+            
+            if let Some(voters) = &mut proposal.voters {
+                voters.push(vote_data.voter_wallet.clone());
+                println!("➕ Agregando votante: {}", vote_data.voter_wallet);
+            }
+            
+            if let Some(nft_id) = &vote_data.nft_id {
+                println!("🎨 NFT ID registrado: {}", nft_id);
+            }
+
+            println!("💾 Guardando propuesta actualizada en Redis");
+            let proposal_json = serde_json::to_string(&proposal).unwrap();
+            if let Err(e) = con.hset::<_, _, _, ()>(
+                "proposals",
+                &vote_data.proposal_wallet,
+                &proposal_json,
+            ).await {
+                println!("❌ Error guardando propuesta en Redis: {:?}", e);
+                return HttpResponse::InternalServerError().body("Error updating proposal");
+            }
+
+            println!("✅ Voto registrado exitosamente");
+            println!("📊 Estado final - Votos: {:?}, Votantes: {:?}", proposal.votes, proposal.voters);
+            HttpResponse::Ok().json(proposal)
+        },
+        None => {
+            println!("❌ Propuesta no encontrada en Redis");
+            HttpResponse::NotFound().body("Propuesta no encontrada")
+        }
     }
 }

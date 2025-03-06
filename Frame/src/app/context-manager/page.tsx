@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { usePrivy } from '@privy-io/react-auth';
 import { useRouter } from 'next/navigation';
-import { useAdminProtection } from '~/middleware/authMiddleware';
 import { Button } from "~/components/ui/Button";
 
 type ContextType = 'world' | 'laws' | 'personality' | 'characters' | 'examples';
@@ -43,9 +42,14 @@ const sections: ContextSection[] = [
 ];
 
 export default function ContextManager() {
-  const { authenticated, login } = usePrivy();
-  const { isAdmin } = useAdminProtection();
+  const { authenticated, login, user } = usePrivy();
   const router = useRouter();
+  
+  const isAdmin = useMemo(() => {
+    const adminWallet = process.env.NEXT_PUBLIC_ADMIN_WALLET || '';
+    return !!user?.wallet?.address && 
+           adminWallet.toLowerCase() === user.wallet.address.toLowerCase();
+  }, [user]);
   
   const [contextParts, setContextParts] = useState<Record<ContextType, string>>({
     world: '',
@@ -59,7 +63,7 @@ export default function ContextManager() {
 
   const handleSubmit = async () => {
     if (!authenticated || !isAdmin) {
-      setMessage('Please sign in to access the context manager');
+      setMessage('Por favor conecta con una wallet de administrador');
       return;
     }
 
@@ -70,13 +74,14 @@ export default function ContextManager() {
       const contextArray = Object.entries(contextParts).map(([type, content]) => ({
         type,
         content,
-        author: 'anonymous'
+        author: user?.wallet?.address || 'anonymous'
       }));
 
       const response = await fetch('/api/context', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-user-wallet': user?.wallet?.address || ''
         },
         body: JSON.stringify(contextArray),
       });
@@ -84,12 +89,12 @@ export default function ContextManager() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Error updating context');
+        throw new Error(data.message || 'Error actualizando el contexto');
       }
 
-      setMessage('Context updated successfully!');
+      setMessage('¡Contexto actualizado exitosamente!');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Error updating context');
+      setMessage(error instanceof Error ? error.message : 'Error actualizando el contexto');
     } finally {
       setIsLoading(false);
     }
@@ -100,19 +105,36 @@ export default function ContextManager() {
       <div className="min-h-screen w-full bg-cover bg-center bg-no-repeat flex flex-col items-center justify-center gap-8"
            style={{ backgroundImage: 'url("/container11.jpg")' }}>
         <div className="text-[#f8c20b] text-2xl font-bold text-center">
-          Please sign in to access the context manager
+          {!authenticated 
+            ? "Por favor conéctate para acceder al administrador de contexto" 
+            : "No tienes permisos de administrador para esta página"}
         </div>
-        <Button
-          onClick={login}
-          className="w-64 bg-gradient-to-r from-[#1a1812] to-[#8b7435]
-                    hover:from-[#1a1812]/90 hover:to-[#8b7435]/90
-                    text-[#f8d54b] font-medium
-                    transition-all duration-200
-                    border border-[#f8d54b]/20
-                    shadow-lg shadow-[#f8d54b]/5"
-        >
-          Connect
-        </Button>
+        {!authenticated && (
+          <Button
+            onClick={login}
+            className="w-64 bg-gradient-to-r from-[#1a1812] to-[#8b7435]
+                      hover:from-[#1a1812]/90 hover:to-[#8b7435]/90
+                      text-[#f8d54b] font-medium
+                      transition-all duration-200
+                      border border-[#f8d54b]/20
+                      shadow-lg shadow-[#f8d54b]/5"
+          >
+            Conectar
+          </Button>
+        )}
+        {authenticated && !isAdmin && (
+          <Button
+            onClick={() => router.push('/')}
+            className="w-64 bg-gradient-to-r from-[#1a1812] to-[#8b7435]
+                      hover:from-[#1a1812]/90 hover:to-[#8b7435]/90
+                      text-[#f8d54b] font-medium
+                      transition-all duration-200
+                      border border-[#f8d54b]/20
+                      shadow-lg shadow-[#f8d54b]/5"
+          >
+            Volver al inicio
+          </Button>
+        )}
       </div>
     );
   }
@@ -124,7 +146,7 @@ export default function ContextManager() {
         <div className="bg-gradient-to-b from-[#5d490d] to-[#040404] p-8 rounded-3xl 
                       shadow-2xl border border-[#7c7c7c]">
           <h1 className="text-3xl font-bold text-[#f8c20b] mb-8 text-center">
-            Context Manager
+            Administrador de Contexto
           </h1>
 
           <div className="space-y-6">
@@ -172,10 +194,10 @@ export default function ContextManager() {
               {isLoading ? (
                 <div className="flex items-center">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#040404] mr-2"></div>
-                  Updating...
+                  Actualizando...
                 </div>
               ) : (
-                'Update Context'
+                'Actualizar Contexto'
               )}
             </Button>
           </div>

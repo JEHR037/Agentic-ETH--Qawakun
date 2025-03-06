@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getAuthToken } from '../utils/auth';
 import { cookies } from 'next/headers';
+import { isAdmin } from '~/lib/auth';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
@@ -51,6 +52,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Verificar si el usuario es administrador
+    const adminCheck = await isAdmin(request);
+    
+    if (!adminCheck.isAdmin) {
+      return NextResponse.json(
+        { error: `Admin access required ${adminCheck.wallet}` },
+        { status: 403 }
+      );
+    }
+    
     const token = await getAuthToken();
     const contextData = await request.json();
 
@@ -87,9 +98,11 @@ export async function POST(request: NextRequest) {
         message: responseText
       });
     }
-  } catch (err) {
-    return NextResponse.json({
-      error: 'Internal Server Error', details: err
-    }, { status: 500 });
+  } catch (error) {
+    console.error('Error updating context:', error);
+    return NextResponse.json(
+      { error: 'Failed to update context' },
+      { status: 500 }
+    );
   }
 } 

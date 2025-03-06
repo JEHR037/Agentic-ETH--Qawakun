@@ -219,4 +219,69 @@ pub async fn handle_nft_claim_post(
             token_id: None,
         })
     }
+}
+
+pub async fn mint_nft(voter_wallet: String) -> Result<NFTInfo, Box<dyn std::error::Error>> {
+    println!("🎨 Iniciando proceso de minteo de NFT para voto");
+    
+    // Obtener instancia del NftManager
+    let nft_manager = NftManager::new().await?;
+    
+    // Convertir la wallet a Address
+    let to_address = voter_wallet.parse::<Address>()
+        .map_err(|e| format!("Error al parsear wallet address: {}", e))?;
+
+    // Crear UserData para el NFT
+    let user_data = UserData {
+        username: format!("Voter {}", &voter_wallet[0..6]), // Primeros 6 caracteres de la wallet
+        email: String::new(), // No necesitamos email para votos
+        wallet_address: voter_wallet.clone(),
+        avatar_url: String::new(), // No necesitamos avatar para votos
+        additional_data: Some(serde_json::json!({
+            "type": "vote_nft",
+            "timestamp": chrono::Utc::now().timestamp(),
+            "vote_type": "proposal_vote"
+        })),
+    };
+
+    // Mintear el NFT usando la función existente
+    println!("📤 Minteando NFT con datos de voto");
+    match nft_manager.mint_nft_with_encrypted_data(
+        to_address,
+        user_data
+    ).await {
+        Ok(receipt) => {
+            println!("✅ NFT minteado exitosamente");
+            
+            // Obtener el token ID del evento Transfer
+            let token_id = receipt
+                .logs
+                .iter()
+                .find(|log| log.topics[0] == ethers::utils::keccak256("Transfer(address,address,uint256)").into())
+                .and_then(|log| {
+                    let bytes = log.topics[3].as_bytes();
+                    Some(ethers::types::U256::from_big_endian(bytes).to_string())
+                })
+                .ok_or("No se pudo obtener el token ID")?;
+
+            println!("📜 Token ID obtenido: {}", token_id);
+
+            Ok(NFTInfo {
+                token_id,
+                transaction_hash: format!("{:?}", receipt.transaction_hash),
+                block_number: receipt.block_number.map(|n| n.as_u64()),
+            })
+        },
+        Err(e) => {
+            println!("❌ Error al mintear NFT: {:?}", e);
+            Err(format!("Error al mintear NFT: {:?}", e).into())
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct NFTInfo {
+    pub token_id: String,
+    pub transaction_hash: String,
+    pub block_number: Option<u64>,
 } 

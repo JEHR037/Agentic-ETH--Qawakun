@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { useRouter } from 'next/navigation';
 import { getAuthToken } from '../utils/clientAuth';
-import { useAdminProtection } from '~/middleware/authMiddleware';
 
 interface Proposal {
   wallet: string;
@@ -22,15 +21,22 @@ interface Proposal {
 type TabType = 'review' | 'voting' | 'winners';
 
 export default function DashboardPage() {
-  const { isAdmin } = useAdminProtection();
+  const { ready, authenticated, user, login } = usePrivy();
+  const router = useRouter();
+  
+  // Verificar admin directamente en la página
+  const isAdmin = useMemo(() => {
+    const adminWallet = process.env.NEXT_PUBLIC_ADMIN_WALLET || '';
+    return !!user?.wallet?.address && 
+           adminWallet.toLowerCase() === user.wallet.address.toLowerCase();
+  }, [user]);
+  
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('review');
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
-  const { ready, authenticated, user } = usePrivy();
-  const router = useRouter();
 
   const loadProposals = async () => {
     try {
@@ -41,35 +47,42 @@ export default function DashboardPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to load proposals');
+        throw new Error(errorData.error || 'Error cargando propuestas');
       }
 
       const data = await response.json();
       
       if (!Array.isArray(data)) {
-        throw new Error('Invalid response format: expected array');
+        throw new Error('Formato de respuesta inválido: se esperaba un array');
       }
 
       setProposals(data);
     } catch (error) {
-      console.error('Error loading proposals:', error);
-      setError(error instanceof Error ? error.message : 'Failed to load proposals');
+      console.error('Error cargando propuestas:', error);
+      setError(error instanceof Error ? error.message : 'Error cargando propuestas');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (ready && !authenticated) {
-      router.push('/');
-    } else if (ready && authenticated) {
-      loadProposals();
+    // Detener la carga en cualquier caso después de que el componente esté listo
+    if (ready) {
+      // Solo cargar propuestas si es admin y está autenticado
+      if (authenticated && isAdmin) {
+        loadProposals();
+      } else {
+        // Si no es admin o no está autenticado, no necesitamos cargar nada
+        setLoading(false);
+      }
     }
-  }, [ready, authenticated]);
+  }, [ready, authenticated, isAdmin]);
 
   useEffect(() => {
     if (user?.wallet?.address) {
       console.log('Tu wallet address:', user.wallet.address);
+      // Guardar dirección en localStorage (opcional)
+      localStorage.setItem('userWalletAddress', user.wallet.address);
     }
   }, [user]);
 
@@ -176,11 +189,30 @@ export default function DashboardPage() {
     }
   });
 
-  if (!ready || loading) {
+  if (!ready) {
     return (
       <div className="min-h-screen w-full flex justify-center items-center bg-cover bg-center bg-no-repeat"
            style={{ backgroundImage: 'url("/container11.jpg")' }}>
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#f8c20b]" />
+      </div>
+    );
+  }
+
+  if (!authenticated) {
+    return (
+      <div className="min-h-screen w-full flex justify-center items-center bg-cover bg-center bg-no-repeat"
+           style={{ backgroundImage: 'url("/container11.jpg")' }}>
+        <div className="bg-gradient-to-b from-[#5d490d] to-[#040404] p-6 rounded-3xl shadow-2xl 
+                    border border-[#7c7c7c] text-center">
+          <p className="text-[#f8c20b] mb-4">Por favor conéctate para acceder al panel de propuestas.</p>
+          <button
+            onClick={login}
+            className="bg-[#f8c20b] text-black px-6 py-2 rounded-lg hover:bg-[#f8c20b]/80
+                     transition-colors font-medium"
+          >
+            Conectar
+          </button>
+        </div>
       </div>
     );
   }
@@ -191,15 +223,24 @@ export default function DashboardPage() {
            style={{ backgroundImage: 'url("/container11.jpg")' }}>
         <div className="bg-gradient-to-b from-[#5d490d] to-[#040404] p-6 rounded-3xl shadow-2xl 
                     border border-[#7c7c7c] text-center">
-          <p className="text-[#f8c20b] mb-4">You don't have permission to access this page.</p>
+          <p className="text-[#f8c20b] mb-4">No tienes permisos para acceder a esta página.</p>
           <button
             onClick={() => router.push('/')}
             className="bg-[#f8c20b] text-black px-6 py-2 rounded-lg hover:bg-[#f8c20b]/80
                      transition-colors font-medium"
           >
-            Go Back
+            Volver al inicio
           </button>
         </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen w-full flex justify-center items-center bg-cover bg-center bg-no-repeat"
+           style={{ backgroundImage: 'url("/container11.jpg")' }}>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#f8c20b]" />
       </div>
     );
   }

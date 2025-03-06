@@ -18,7 +18,6 @@ use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use std::fs;
 use crate::openai_methods::get_image::generate_image;
 
-// Generar los bindings para el contrato
 abigen!(
     QawakunContract,
     "./src/api/cdp/abi/nft_contract_abi.json",

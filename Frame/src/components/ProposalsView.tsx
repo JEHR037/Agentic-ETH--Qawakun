@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
+import { usePrivy } from '@privy-io/react-auth';
 import { Button } from "~/components/ui/Button";
 
 interface Proposal {
@@ -11,13 +12,22 @@ interface Proposal {
   flexibility: number;
   timestamp: string;
   status: number;
+  votes?: number;
+  voters?: string[];
 }
 
+
 export default function ProposalsView() {
+  const { user, authenticated, login } = usePrivy();
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Estados para la votación
+  const [isVoting, setIsVoting] = useState(false);
+  const [voteSuccess, setVoteSuccess] = useState<string | null>(null);
+  const [voteError, setVoteError] = useState<string | null>(null);
 
   useEffect(() => {
     loadProposals();
@@ -44,6 +54,76 @@ export default function ProposalsView() {
       setError('Failed to load proposals');
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const handleVote = async (proposal: Proposal) => {
+    // Limpiar mensajes anteriores
+    setVoteSuccess(null);
+    setVoteError(null);
+    
+    // Verificar si el usuario está autenticado
+    if (!authenticated || !user?.wallet?.address) {
+      setVoteError('Por favor conecta tu wallet para votar');
+      login();
+      return;
+    }
+    
+    // Verificar si el usuario ya ha votado esta propuesta
+    if (proposal.voters?.includes(user.wallet.address)) {
+      setVoteError('Ya has votado por esta propuesta');
+      return;
+    }
+    
+    try {
+      setIsVoting(true);
+      
+      const response = await fetch('/api/proposal/vote', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          proposalWallet: proposal.wallet,
+          voterWallet: user.wallet.address
+        })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || data.details || 'Error al procesar el voto');
+      }
+      
+      // Mostrar mensaje de éxito
+      setVoteSuccess('¡Voto registrado! Iniciando proceso de minteo de NFT...');
+      
+      // Similar a Demo.tsx, esperar para dar tiempo al proceso de minteo
+      // El minteo puede tardar hasta 3 segundos (3000ms)
+      setTimeout(async () => {
+        try {
+          // Recargar propuestas para actualizar los contadores
+          await loadProposals();
+          
+          // Actualizar mensaje
+          setVoteSuccess('¡NFT minteado exitosamente! Gracias por tu voto.');
+          
+          // Cerrar el modal después de un tiempo adicional para que el usuario vea el mensaje
+          setTimeout(() => {
+            setSelectedProposal(null);
+            setVoteSuccess(null);
+          }, 3000);
+        } catch (error) {
+          console.error('Error al recargar propuestas:', error);
+          // No mostrar este error al usuario ya que el voto fue exitoso
+        }
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Error al votar:', error);
+      setVoteError(error instanceof Error ? error.message : 'Error al procesar el voto');
+    } finally {
+      setIsVoting(false);
     }
   };
 
@@ -234,18 +314,39 @@ export default function ProposalsView() {
               </section>
             </div>
 
+            {/* Mostrar mensajes de error o éxito */}
+            {(voteSuccess || voteError) && (
+              <div className={`mx-6 lg:mx-8 my-4 p-4 rounded-lg ${
+                voteSuccess ? 'bg-green-900/50 text-green-200' : 'bg-red-900/50 text-red-200'
+              }`}>
+                {voteSuccess || voteError}
+              </div>
+            )}
+
             {/* Footer con botones de acción - adaptado para móviles */}
             <div className="sticky bottom-0 bg-[#1a1812] px-6 lg:px-8 py-4 border-t border-[#f8c20b]/10 flex flex-col sm:flex-row justify-end items-center gap-3 sm:gap-4">
               <Button
                 onClick={() => setSelectedProposal(null)}
                 className="bg-transparent border border-[#f8c20b]/30 text-[#f8c20b] hover:bg-[#f8c20b]/10 w-full sm:w-auto order-2 sm:order-1"
+                disabled={isVoting}
               >
                 Close
               </Button>
               <Button
-                className="bg-[#f8c20b] text-black hover:bg-[#f8c20b]/90 w-full sm:w-auto order-1 sm:order-2"
+                onClick={() => handleVote(selectedProposal)}
+                disabled={isVoting || !authenticated}
+                className="bg-[#f8c20b] text-black hover:bg-[#f8c20b]/90 w-full sm:w-auto order-1 sm:order-2 relative"
               >
-                Vote for this Proposal
+                {isVoting ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black mr-2"></div>
+                    Procesando...
+                  </div>
+                ) : authenticated ? (
+                  'Votar por esta propuesta'
+                ) : (
+                  'Conectar para votar'
+                )}
               </Button>
             </div>
           </div>

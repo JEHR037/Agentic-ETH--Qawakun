@@ -1,49 +1,59 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export async function middleware(request: NextRequest) {
-  // Rutas protegidas
-  const protectedPaths = ['/context-manager', '/api/context'];
+export function middleware(request: NextRequest) {
+  // Obtener la URL y el origen de la solicitud
+  const url = request.nextUrl.clone();
+  const { pathname } = url;
   
-  const path = request.nextUrl.pathname;
-  if (!protectedPaths.some(prefix => path.startsWith(prefix))) {
-    return NextResponse.next();
-  }
-
-  // Verificar autenticación con Privy
-  const privyToken = request.cookies.get('privy-token');
-  if (!privyToken) {
-    return new NextResponse(
-      JSON.stringify({ error: 'Authentication required' }),
-      { 
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      }
+  // Verificar si es una ruta de API (excepto las específicamente permitidas para acceso externo)
+  if (pathname.startsWith('/api/') && 
+      !pathname.startsWith('/api/webhook') && 
+      !pathname.startsWith('/api/interactive') &&
+      !pathname.startsWith('/api/proposal/vote')) {
+    
+    // Verificar el origen (referrer)
+    const referer = request.headers.get('referer') || '';
+    const host = request.headers.get('host') || '';
+    
+    // Lista de orígenes permitidos
+    const allowedOrigins = [
+      `https://${host}`,
+      `http://${host}`,
+      'http://localhost:3000',
+      process.env.NEXT_PUBLIC_URL,
+    ].filter(Boolean);
+    
+    // Verificar si el referrer es de un origen permitido
+    const isFromAllowedOrigin = allowedOrigins.some(origin => 
+      referer.startsWith(origin as string)
     );
-  }
-
-  // Verificar si es admin para context-manager
-  if (path.startsWith('/context-manager')) {
-    const adminWallets = process.env.NEXT_PUBLIC_ADMIN_WALLETS?.split(',') || [];
-    const userWallet = request.cookies.get('user-wallet')?.value;
-
-    if (!userWallet || !adminWallets.map(w => w.toLowerCase()).includes(userWallet.toLowerCase())) {
-      return new NextResponse(
-        JSON.stringify({ error: 'Admin access required '+userWallet}),
-        { 
-          status: 403,
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
+    
+    // Si no hay referer o no es de un origen permitido, verificar token de API
+    if (!isFromAllowedOrigin) {
+      // Verificar token de API en la cabecera
+      const apiToken = request.headers.get('x-api-token');
+      
+      // Token desde variable de entorno
+      const validToken = process.env.API_ACCESS_TOKEN;
+      
+      // Si no hay token o no coincide, denegar el acceso
+      if (!apiToken || apiToken !== validToken) {
+        console.log('Acceso no autorizado a API desde:', referer);
+        
+        return NextResponse.json(
+          { error: 'Acceso no autorizado' },
+          { status: 403 }
+        );
+      }
     }
   }
-
+  
+  // Permitir la solicitud si pasa todas las verificaciones
   return NextResponse.next();
 }
 
+// Configurar en qué rutas se aplicará este middleware
 export const config = {
-  matcher: [
-    '/context-manager/:path*',
-    '/api/context/:path*'
-  ]
+  matcher: ['/api/:path*'],
 }; 
