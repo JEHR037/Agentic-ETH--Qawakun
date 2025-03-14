@@ -117,7 +117,7 @@ async fn process_message(data: serde_json::Value) -> HttpResponse {
                 Err(e) => {
                     println!("❌ Error leyendo contexto de Redis: {}", e);
                     println!("⚠️ Cambiando a archivo context.md como respaldo");
-                    match std::fs::read_to_string("context.md") {
+                    match std::fs::read_to_string("context1.md") {
                         Ok(content) => format!(
                             "You are Qawakun, a narrative guide in this interactive experience.\n{}\n\
                              Stay in character and maintain narrative consistency.",
@@ -133,7 +133,7 @@ async fn process_message(data: serde_json::Value) -> HttpResponse {
         },
         Ok(false) => {
             println!("⚠️ Usando archivo context.md (clave context-text no existe en Redis)");
-            match std::fs::read_to_string("context.md") {
+            match std::fs::read_to_string("context1.md") {
                 Ok(content) => format!(
                     "You are Qawakun, a narrative guide in this interactive experience.\n{}\n\
                      Stay in character and maintain narrative consistency.",
@@ -148,7 +148,7 @@ async fn process_message(data: serde_json::Value) -> HttpResponse {
         Err(e) => {
             println!("❌ Error verificando existencia en Redis: {}", e);
             println!("⚠️ Cambiando a archivo context.md como respaldo");
-            match std::fs::read_to_string("context.md") {
+            match std::fs::read_to_string("context1.md") {
                 Ok(content) => format!(
                     "You are Qawakun, a narrative guide in this interactive experience.\n{}\n\
                      Stay in character and maintain narrative consistency.",

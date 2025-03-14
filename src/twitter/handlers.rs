@@ -72,7 +72,7 @@ pub async fn handle_mention(
 
     let redis_client = redis::Client::open(env::var("REDIS_URL")?)?;
     let api_key = env::var("OPENAI_API_KEY")?;
-    let context = std::fs::read_to_string("context.md")?;
+    let context = std::fs::read_to_string("context1.md")?;
 
     let response = handle_conversation(
         &redis_client,
