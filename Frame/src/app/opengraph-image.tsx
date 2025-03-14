@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Farcaster Qawakun";
+export const alt = "Lumen Frame";
 export const size = {
   width: 600,
   height: 400,

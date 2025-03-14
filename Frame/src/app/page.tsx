@@ -10,7 +10,7 @@ const frame = {
     title: "Launch Frame",
     action: {
       type: "launch_frame",
-      name: "Farcaster Qawakun",
+      name: "Lumen Frame",
       url: appUrl,
       splashImageUrl: `${appUrl}/splash.jpg`,
       splashBackgroundColor: "#f7f7f7",
@@ -22,10 +22,10 @@ export const revalidate = 300;
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Farcaster Qawakun",
+    title: "Lumen Frame",
     openGraph: {
-      title: "Farcaster Qawakun",
-      description: "A Farcaster Qawakun app.",
+      title: "Lumen Frame",
+      description: "A Lumen Frame app.",
     },
     other: {
       "fc:frame": JSON.stringify(frame),

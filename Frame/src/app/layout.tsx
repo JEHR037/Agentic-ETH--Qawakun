@@ -4,8 +4,8 @@ import "~/app/globals.css";
 import { Providers } from "~/app/providers";
 
 export const metadata: Metadata = {
-  title: "Farcaster Qawakun",
-  description: "A Farcaster Qawakun app",
+  title: "Lumen Frame",
+  description: "A Lumen Frame app",
 };
 
 export default async function RootLayout({
