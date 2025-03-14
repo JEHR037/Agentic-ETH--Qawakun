@@ -104,9 +104,9 @@ async fn process_message(data: serde_json::Value) -> HttpResponse {
         }
     };
 
-    let context_content = match con.exists::<_, bool>("context-text").await {
+    let context_content = match con.exists::<_, bool>("context-text1").await {
         Ok(true) => {
-            match con.get::<_, String>("context-text").await {
+            match con.get::<_, String>("context-text1").await {
                 Ok(content) => {
                     format!(
                         "You are Qawakun, a narrative guide in this interactive experience.\n{}\n\
@@ -419,7 +419,7 @@ pub async fn handle_context_update(
         context_map.get(&ContextType::Examples).unwrap_or(&String::from(""))
     );
 
-    match con.set::<_, _, ()>("context-text", &combined_context).await {
+    match con.set::<_, _, ()>("context-text1", &combined_context).await {
         Ok(_) => {
             println!("✅ Contexto actualizado exitosamente en Redis");
             HttpResponse::Ok().json("Context updated successfully")
@@ -454,7 +454,7 @@ pub async fn handle_context_get(
     };
 
     // Intentar obtener el texto completo del contexto
-    let context_string: Option<String> = match con.get("context-text").await {
+    let context_string: Option<String> = match con.get("context-text1").await {
         Ok(content) => {
             println!("✅ Contexto recuperado de Redis");
             content
