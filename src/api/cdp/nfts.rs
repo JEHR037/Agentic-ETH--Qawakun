@@ -255,7 +255,7 @@ impl NftManager {
         
         // Leer y subir la imagen estática a Pinata
         println!("📤 Subiendo imagen estática a Pinata...");
-        let image_bytes = fs::read("src/img/image09.png")?;
+        let image_bytes = fs::read("src/img/image09.jpg")?;
         
         let jwt = env::var("JWT_SECRET_PINATA")
             .expect("JWT_SECRET_PINATA debe estar configurado en .env");

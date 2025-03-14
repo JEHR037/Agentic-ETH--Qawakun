@@ -1,7 +1,7 @@
 export async function getAuthToken() {
   try {
     // Forzar el uso de IPv4 en la URL
-    const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:8080';
+    const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:8081';
     
     console.log(`Intentando obtener token desde ${backendUrl}/login`);
     

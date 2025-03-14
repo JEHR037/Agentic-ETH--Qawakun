@@ -81,7 +81,7 @@ async fn main() -> Result<()> {
         return Err(anyhow::anyhow!("Missing required environment variables"));
     }
     
-    println!("\n🚀 Starting server at http://127.0.0.1:8080");
+    println!("\n🚀 Starting server at http://127.0.0.1:8081");
     sleep(Duration::from_secs(2)).await;
 
     println!("\n📱 Initializing X (Twitter) integration...");
@@ -174,7 +174,7 @@ async fn main() -> Result<()> {
             .app_data(nft_manager.clone())
             .configure(api::handlers::config)
     })
-    .bind("0.0.0.0:8080")?
+    .bind("0.0.0.0:8081")?
     .run()
     .await?;
     

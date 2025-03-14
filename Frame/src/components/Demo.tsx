@@ -669,162 +669,61 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
 }
 
 function TypewriterText({ text }: { text: string }) {
-  const [currentPage, setCurrentPage] = useState(0);
-  const CHARS_PER_PAGE = 150; // Ajusta este número según lo que se vea mejor en la pantalla
-  
-  const pages = useMemo(() => {
-    const words = text.split(' ');
-    const pages = [];
-    let currentPage = '';
-    
-    for (const word of words) {
-      if ((currentPage + ' ' + word).length <= CHARS_PER_PAGE) {
-        currentPage += (currentPage ? ' ' : '') + word;
-      } else {
-        pages.push(currentPage);
-        currentPage = word;
-      }
-    }
-    if (currentPage) {
-      pages.push(currentPage);
-    }
-    return pages;
+  const [displayedText, setDisplayedText] = useState('');
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    setDisplayedText('');
+    setCurrentIndex(0);
   }, [text]);
 
-  const hasMultiplePages = pages.length > 1;
+  useEffect(() => {
+    if (currentIndex < text.length) {
+      const timeout = setTimeout(() => {
+        setDisplayedText(prev => prev + text[currentIndex]);
+        setCurrentIndex(prev => prev + 1);
+      }, 30); // ajustar velocidad según necesidad
+
+      return () => clearTimeout(timeout);
+    }
+  }, [currentIndex, text]);
 
   return (
-    <div className="flex flex-col items-center space-y-4 select-none">
-      <div className="whitespace-pre-wrap break-words min-h-[200px] flex items-center justify-center select-none">
-        {pages[currentPage] || ''}
-      </div>
-      
-      {hasMultiplePages && (
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
-            disabled={currentPage === 0}
-            className={`
-              relative px-4 py-2 rounded-lg
-              ${currentPage === 0 
-                ? 'bg-[#1a1812]/50 text-[#f8c20b]/50' 
-                : 'bg-[#1a1812]/50 text-[#f8c20b] hover:bg-[#1a1812]/70'}
-              transition-all duration-200
-              border border-[#f8c20b]/30
-              disabled:cursor-not-allowed
-            `}
-          >
-            ◀
-          </button>
-          
-          <span className="text-[#f8c20b] text-sm">
-            {currentPage + 1} / {pages.length}
-          </span>
-          
-          <button
-            onClick={() => setCurrentPage(prev => Math.min(pages.length - 1, prev + 1))}
-            disabled={currentPage === pages.length - 1}
-            className={`
-              relative px-4 py-2 rounded-lg
-              ${currentPage === pages.length - 1 
-                ? 'bg-[#1a1812]/50 text-[#f8c20b]/50' 
-                : 'bg-[#1a1812]/50 text-[#f8c20b] hover:bg-[#1a1812]/70'}
-              transition-all duration-200
-              border border-[#f8c20b]/30
-              disabled:cursor-not-allowed
-            `}
-          >
-            ▶
-          </button>
-        </div>
+    <div className="inline-block text-[#8ac0d9] whitespace-pre-wrap break-words">
+      {displayedText}
+      {currentIndex < text.length && (
+        <span className="animate-pulse">▮</span>
       )}
     </div>
   );
 }
 
-function LanguageSelector({ onSelect }: { onSelect: (language: string) => void }) {
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const languages = [
-    { code: 'es', name: 'Español' },
-    { code: 'en', name: 'English' }
-  ];
-
-  // Manejar navegación con teclado
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowUp') {
-        setSelectedIndex(prev => (prev > 0 ? prev - 1 : languages.length - 1));
-      } else if (e.key === 'ArrowDown') {
-        setSelectedIndex(prev => (prev < languages.length - 1 ? prev + 1 : 0));
-      } else if (e.key === 'Enter') {
-        onSelect(languages[selectedIndex].code);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [selectedIndex, languages, onSelect]);
-
+function LanguageSelector({ onSelect }: { onSelect: (lang: string) => void }) {
   return (
-    <div className="relative flex flex-col items-center">
-      <div className="absolute top-0 left-0 w-full h-full">
-        <div className="w-full h-full opacity-10"
-             style={{
-               backgroundImage: `url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='0' y='0' width='1' height='1' fill='%23f8c20b'/%3E%3C/svg%3E")`,
-               backgroundSize: '20px 20px'
-             }}
-        />
-      </div>
+    <div className="flex flex-col gap-4 max-w-[250px] mx-auto">
+      <button 
+        onClick={() => onSelect('es')}
+        className="px-6 py-3 bg-[#232c39]/80 hover:bg-[#232c39] 
+                 text-[#8ac0d9] font-medium rounded-sm 
+                 border border-[#8ac0d9]/30 
+                 transition-all duration-200
+                 shadow-md hover:shadow-lg hover:-translate-y-1
+                 flex items-center justify-center"
+      >
+        <span>Español</span>
+      </button>
       
-      <div className="relative z-10 space-y-4 py-8">
-        <h3 className="text-[#f8c20b] text-xl font-bold text-center mb-6">
-          Select Your Language
-        </h3>
-        
-        {languages.map((lang, index) => (
-          <div
-            key={lang.code}
-            onClick={() => {
-              setSelectedIndex(index);
-              onSelect(lang.code);
-            }}
-            className={`
-              relative cursor-pointer px-8 py-3
-              transform transition-all duration-200
-              ${selectedIndex === index ? 'scale-110' : 'scale-100'}
-            `}
-          >
-            {/* Flecha indicadora */}
-            {selectedIndex === index && (
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 text-[#f8c20b] animate-bounce">
-                ▶
-              </div>
-            )}
-            
-            {/* Botón de idioma */}
-            <div
-              className={`
-                relative px-6 py-2 rounded-lg
-                ${selectedIndex === index 
-                  ? 'bg-gradient-to-r from-[#f8c20b] to-[#5d490d] text-[#1a1812]' 
-                  : 'bg-[#1a1812]/50 text-[#f8c20b]'}
-                transition-all duration-200
-                hover:shadow-lg hover:shadow-[#f8c20b]/20
-                border border-[#f8c20b]/30
-              `}
-            >
-              <span className="relative z-10 font-medium">
-                {lang.name}
-              </span>
-              
-              {/* Efecto de brillo */}
-              {selectedIndex === index && (
-                <div className="absolute inset-0 bg-gradient-to-r from-[#f8c20b]/0 via-[#f8c20b]/30 to-[#f8c20b]/0 animate-shine" />
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+      <button 
+        onClick={() => onSelect('en')}
+        className="px-6 py-3 bg-[#232c39]/80 hover:bg-[#232c39] 
+                 text-[#8ac0d9] font-medium rounded-sm 
+                 border border-[#8ac0d9]/30
+                 transition-all duration-200
+                 shadow-md hover:shadow-lg hover:-translate-y-1
+                 flex items-center justify-center"
+      >
+        <span>English</span>
+      </button>
     </div>
   );
 }
@@ -889,11 +788,12 @@ function GameboyInterface({
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const images = [
-    '/carrousel/1.jpg',
-    '/carrousel/2.jpg',
-    '/carrousel/3.jpg',
-    '/carrousel/4.jpg',
-    '/carrousel/5.jpg',
+    '/carrousel/1.png',
+    '/carrousel/2.png',
+    '/carrousel/3.png',
+    '/carrousel/4.png',
+    '/carrousel/5.png',
+    '/carrousel/6.png',
     // Añade aquí todas las imágenes que tengas en la carpeta
   ];
 
@@ -925,15 +825,15 @@ function GameboyInterface({
           <div className="relative">
             {/* Onda exterior */}
             <div className="absolute inset-0 animate-ping">
-              <div className="w-full h-full bg-[#f8c20b]/10 rounded-full"></div>
+              <div className="w-full h-full bg-[#8ac0d9]/10 rounded-full"></div>
             </div>
             {/* Onda media */}
             <div className="absolute inset-1 animate-pulse">
-              <div className="w-full h-full bg-[#f8c20b]/20 rounded-full"></div>
+              <div className="w-full h-full bg-[#8ac0d9]/20 rounded-full"></div>
             </div>
             {/* Punto central */}
             <div className="absolute inset-2">
-              <div className="w-full h-full bg-[#f8c20b] rounded-full shadow-lg shadow-[#f8c20b]/30"></div>
+              <div className="w-full h-full bg-[#8ac0d9] rounded-full shadow-lg shadow-[#8ac0d9]/30"></div>
             </div>
           </div>
         </div>
@@ -961,177 +861,196 @@ function GameboyInterface({
       )}
 
       <div ref={containerRef} className={`
-        bg-gradient-to-b from-[#5d490d] to-[#040404]
-        p-6 rounded-3xl shadow-2xl 
-        border border-[#7c7c7c]
-        w-[290px] mx-auto
+        bg-gradient-to-b from-[#232c39] to-[#455464]
+        p-6 rounded-xl border-[6px] border-[#5a3a3b]
+        w-[330px] mx-auto
         ${!isAuthenticated || (disabled && !isFreeChat) ? 'opacity-50 pointer-events-none' : ''}
-        relative
-        select-none
+        relative select-none shadow-xl
+        before:absolute before:inset-0 before:bg-gradient-to-tr 
+        before:from-[#5a3a3b]/30 before:to-[#232c39]/40 
+        before:rounded-lg before:mix-blend-overlay
+        overflow-visible
       `}>
+        {/* Cámara y sensores simplificados */}
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-[#232c39] border border-[#8d7481]/50 flex items-center justify-center">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#8ac0d9]/30 animate-pulse"></div>
+          </div>
+        </div>
+
         <div className="relative">
+          {/* Pantalla con menos efectos */}
           <div className={`
-            relative h-[360px] mb-6 rounded-2xl overflow-hidden
-            bg-[#040404]
-            border-2 border-[#545454]
-            before:absolute before:inset-0 
-            before:bg-gradient-to-br 
-            before:from-[#f8c20b]/10 before:to-transparent
-            before:pointer-events-none
-            -mx-4
+            relative h-[430px] mb-4 rounded-lg overflow-hidden
+            bg-[#232c39] border border-[#8d7481]
+            shadow-inner shadow-[#455464]
+            -mx-2
           `}>
-            <div className="absolute inset-0 z-0">
-              {images.map((img, index) => (
-                <div
-                  key={img}
-                  className={`
-                    absolute inset-0 transition-opacity duration-1000
-                    bg-cover bg-center bg-no-repeat
-                    ${currentImageIndex === index ? 'opacity-20' : 'opacity-0'}
-                  `}
-                  style={{ backgroundImage: `url(${img})` }}
+            {/* Efectos de cristal simplificados */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none z-10"></div>
+            <div className="absolute inset-0 bg-[repeating-linear-gradient(to_bottom,transparent,transparent_10px,rgba(138,192,217,0.02)_10px,rgba(138,192,217,0.02)_11px)] pointer-events-none opacity-30 z-10"></div>
+            
+            {/* Marca de daño simplificada */}
+            <div className="absolute top-0 right-0 w-[15%] h-[10%] bg-gradient-to-b from-[#8d7481]/5 to-transparent pointer-events-none z-10 clip-path-diagonal"></div>
+
+            {/* Contenido de la pantalla */}
+            <div className="absolute inset-0 z-20">
+              <div className="absolute inset-0 z-0">
+                {images.map((img, index) => (
+                  <div
+                    key={img}
+                    className={`
+                      absolute inset-0 transition-opacity duration-1000
+                      bg-cover bg-center bg-no-repeat
+                      ${currentImageIndex === index ? 'opacity-20' : 'opacity-0'}
+                    `}
+                    style={{ backgroundImage: `url(${img})` }}
+                  />
+                ))}
+              </div>
+
+              <div className="absolute inset-0 opacity-5 z-10">
+                <div className="w-full h-full" 
+                     style={{
+                       backgroundImage: 'radial-gradient(#f8c20b 1px, transparent 1px)',
+                       backgroundSize: '20px 20px'
+                     }}
                 />
-              ))}
-            </div>
+              </div>
 
-            <div className="absolute inset-0 opacity-5 z-10">
-              <div className="w-full h-full" 
-                   style={{
-                     backgroundImage: 'radial-gradient(#f8c20b 1px, transparent 1px)',
-                     backgroundSize: '20px 20px'
-                   }}
-              />
-            </div>
+              <div className="absolute top-3 left-3 flex space-x-2 z-20">
+                <div className="relative w-4 h-4">
+                  <div className="absolute inset-0 animate-ping">
+                    <div className={`w-full h-full ${!isAuthenticated || disabled ? 'bg-[#f8c20b]/10' : 'bg-[#2da44e]/10'} rounded-full`}></div>
+                  </div>
+                  <div className="absolute inset-1">
+                    <div className={`w-full h-full ${!isAuthenticated || disabled ? 'bg-[#f8c20b]/20' : 'bg-[#2da44e]/20'} rounded-full animate-pulse`}></div>
+                  </div>
+                  <div className="absolute inset-1.5">
+                    <div className={`w-full h-full ${!isAuthenticated || disabled ? 'bg-[#f8c20b]' : 'bg-[#2da44e]'} rounded-full shadow-lg ${!isAuthenticated || disabled ? 'shadow-[#f8c20b]/30' : 'shadow-[#2da44e]/30'}`}></div>
+                  </div>
+                </div>
 
-            <div className="absolute top-3 left-3 flex space-x-2 z-20">
-              <div className="relative w-4 h-4">
-                <div className="absolute inset-0 animate-ping">
-                  <div className={`w-full h-full ${!isAuthenticated || disabled ? 'bg-[#f8c20b]/10' : 'bg-[#2da44e]/10'} rounded-full`}></div>
+                <div className="relative w-4 h-4 delay-75">
+                  <div className="absolute inset-0 animate-ping">
+                    <div className={`w-full h-full ${!isAuthenticated || disabled ? 'bg-[#f8c20b]/10' : 'bg-[#2da44e]/10'} rounded-full`}></div>
+                  </div>
+                  <div className="absolute inset-1">
+                    <div className={`w-full h-full ${!isAuthenticated || disabled ? 'bg-[#f8c20b]/20' : 'bg-[#2da44e]/20'} rounded-full animate-pulse`}></div>
+                  </div>
+                  <div className="absolute inset-1.5">
+                    <div className={`w-full h-full ${!isAuthenticated || disabled ? 'bg-[#f8c20b]' : 'bg-[#2da44e]'} rounded-full shadow-lg ${!isAuthenticated || disabled ? 'shadow-[#f8c20b]/30' : 'shadow-[#2da44e]/30'}`}></div>
+                  </div>
                 </div>
-                <div className="absolute inset-1">
-                  <div className={`w-full h-full ${!isAuthenticated || disabled ? 'bg-[#f8c20b]/20' : 'bg-[#2da44e]/20'} rounded-full animate-pulse`}></div>
-                </div>
-                <div className="absolute inset-1.5">
-                  <div className={`w-full h-full ${!isAuthenticated || disabled ? 'bg-[#f8c20b]' : 'bg-[#2da44e]'} rounded-full shadow-lg ${!isAuthenticated || disabled ? 'shadow-[#f8c20b]/30' : 'shadow-[#2da44e]/30'}`}></div>
+
+                <div className="relative w-4 h-4 delay-150">
+                  <div className="absolute inset-0 animate-ping">
+                    <div className={`w-full h-full ${!isAuthenticated || disabled ? 'bg-[#f8c20b]/10' : 'bg-[#2da44e]/10'} rounded-full`}></div>
+                  </div>
+                  <div className="absolute inset-1">
+                    <div className={`w-full h-full ${!isAuthenticated || disabled ? 'bg-[#f8c20b]/20' : 'bg-[#2da44e]/20'} rounded-full animate-pulse`}></div>
+                  </div>
+                  <div className="absolute inset-1.5">
+                    <div className={`w-full h-full ${!isAuthenticated || disabled ? 'bg-[#f8c20b]' : 'bg-[#2da44e]'} rounded-full shadow-lg ${!isAuthenticated || disabled ? 'shadow-[#f8c20b]/30' : 'shadow-[#2da44e]/30'}`}></div>
+                  </div>
                 </div>
               </div>
 
-              <div className="relative w-4 h-4 delay-75">
-                <div className="absolute inset-0 animate-ping">
-                  <div className={`w-full h-full ${!isAuthenticated || disabled ? 'bg-[#f8c20b]/10' : 'bg-[#2da44e]/10'} rounded-full`}></div>
-                </div>
-                <div className="absolute inset-1">
-                  <div className={`w-full h-full ${!isAuthenticated || disabled ? 'bg-[#f8c20b]/20' : 'bg-[#2da44e]/20'} rounded-full animate-pulse`}></div>
-                </div>
-                <div className="absolute inset-1.5">
-                  <div className={`w-full h-full ${!isAuthenticated || disabled ? 'bg-[#f8c20b]' : 'bg-[#2da44e]'} rounded-full shadow-lg ${!isAuthenticated || disabled ? 'shadow-[#f8c20b]/30' : 'shadow-[#2da44e]/30'}`}></div>
-                </div>
+              <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-30">
+                <div className="absolute top-0 left-4 w-[1px] h-full bg-gradient-to-b from-transparent via-[#f8c20b]/20 to-transparent"></div>
+                <div className="absolute top-0 right-4 w-[1px] h-full bg-gradient-to-b from-transparent via-[#f8c20b]/20 to-transparent"></div>
               </div>
 
-              <div className="relative w-4 h-4 delay-150">
-                <div className="absolute inset-0 animate-ping">
-                  <div className={`w-full h-full ${!isAuthenticated || disabled ? 'bg-[#f8c20b]/10' : 'bg-[#2da44e]/10'} rounded-full`}></div>
-                </div>
-                <div className="absolute inset-1">
-                  <div className={`w-full h-full ${!isAuthenticated || disabled ? 'bg-[#f8c20b]/20' : 'bg-[#2da44e]/20'} rounded-full animate-pulse`}></div>
-                </div>
-                <div className="absolute inset-1.5">
-                  <div className={`w-full h-full ${!isAuthenticated || disabled ? 'bg-[#f8c20b]' : 'bg-[#2da44e]'} rounded-full shadow-lg ${!isAuthenticated || disabled ? 'shadow-[#f8c20b]/30' : 'shadow-[#2da44e]/30'}`}></div>
-                </div>
-              </div>
-            </div>
-
-            <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-30">
-              <div className="absolute top-0 left-4 w-[1px] h-full bg-gradient-to-b from-transparent via-[#f8c20b]/20 to-transparent"></div>
-              <div className="absolute top-0 right-4 w-[1px] h-full bg-gradient-to-b from-transparent via-[#f8c20b]/20 to-transparent"></div>
-            </div>
-
-            <div className="relative z-40 h-full flex items-center justify-center p-4">
-              <div className="w-full max-h-full overflow-hidden">
-                {isFirstInteraction ? (
-                  isAuthenticated && !disabled ? (
-                    <LanguageSelector 
-                      onSelect={async (lang) => {
-                        if (!author || author === 'anonymous') {
-                          setApiResponse("Please connect your wallet first");
-                          return;
-                        }
-                        setSelectedLanguage(lang);
-                        try {
-                          const response = await fetch("/api/interactive", {
-                            method: "POST",
-                            headers: {
-                              "Content-Type": "application/json",
-                            },
-                            body: JSON.stringify({
-                              data: {
-                                content: lang,
-                                author: author
-                              }
-                            }),
-                          });
-
-                          const responseData = await response.json();
-                          
-                          if (!response.ok) {
-                            setApiResponse(responseData.message || "Error processing request");
+              <div className="relative z-40 h-full flex items-center justify-center p-4">
+                <div className="w-full max-h-full overflow-hidden">
+                  {isFirstInteraction ? (
+                    isAuthenticated && !disabled ? (
+                      <LanguageSelector 
+                        onSelect={async (lang) => {
+                          if (!author || author === 'anonymous') {
+                            setApiResponse("Please connect your wallet first");
                             return;
                           }
+                          setSelectedLanguage(lang);
+                          try {
+                            const response = await fetch("/api/interactive", {
+                              method: "POST",
+                              headers: {
+                                "Content-Type": "application/json",
+                              },
+                              body: JSON.stringify({
+                                data: {
+                                  content: lang,
+                                  author: author
+                                }
+                              }),
+                            });
 
-                          const displayMessage = responseData.message || "Message received";
+                            const responseData = await response.json();
+                            
+                            if (!response.ok) {
+                              setApiResponse(responseData.message || "Error processing request");
+                              return;
+                            }
 
-                          setApiResponse(displayMessage);
-                          setMessage(""); 
-                          setMessageCount(prev => prev + 1);
-                          setMessageHistory(prev => [...prev, lang]);
-                          setIsFirstInteraction(false);
-                        } catch (err) {
-                          console.warn('Error sending message:', err);
-                          setApiResponse("Error processing request");
-                        }
-                      }}
-                    />
+                            const displayMessage = responseData.message || "Message received";
+
+                            setApiResponse(displayMessage);
+                            setMessage(""); 
+                            setMessageCount(prev => prev + 1);
+                            setMessageHistory(prev => [...prev, lang]);
+                            setIsFirstInteraction(false);
+                          } catch (err) {
+                            console.warn('Error sending message:', err);
+                            setApiResponse("Error processing request");
+                          }
+                        }}
+                      />
+                    ) : (
+                      <span className="animate-pulse text-2xl font-bold block text-center
+                                     transition-all duration-1000 
+                                     text-[#f8c20b] hover:text-[#f8c20b]/80
+                                     select-none">
+                        {!isAuthenticated ? "Please sign in to continue" :
+                         hasClaimed ? "Come back later!" :
+                         "Choose language"}
+                      </span>
+                    )
                   ) : (
-                    <span className="animate-pulse text-2xl font-bold block text-center
-                                   transition-all duration-1000 
-                                   text-[#f8c20b] hover:text-[#f8c20b]/80
-                                   select-none">
-                      {!isAuthenticated ? "Please sign in to continue" :
-                       hasClaimed ? "Come back later!" :
-                       "Choose language"}
-                    </span>
-                  )
-                ) : (
-                  <div className="font-mono text-[#f8c20b] text-center">
-                    <TypewriterText text={apiResponse} />
-                  </div>
-                )}
+                    <div className="font-mono text-[#f8c20b] text-center">
+                      <TypewriterText text={apiResponse} />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex items-start gap-6 bg-[#040404]/50 p-4 rounded-xl border border-[#545454]">
+          {/* Panel de control simplificado */}
+          <div className="space-y-3">
+            <div className="flex items-start gap-4 bg-[#232c39]/90 p-3 rounded-md border border-[#8d7481]
+                          backdrop-blur-md shadow-inner">
+              {/* Botón de Reset */}
               <div className="flex-shrink-0 flex flex-col items-center gap-1">
                 <button
                   onClick={onReset}
-                  className="w-12 h-12 rounded-full 
-                           bg-gradient-to-br from-[#f8c20b] to-[#5d490d]
-                           shadow-lg shadow-[#f8c20b]/30
-                           hover:from-[#f8c20b]/90 hover:to-[#5d490d]/90
-                           active:shadow-inner
-                           transition-all duration-200
-                           border border-[#f8c20b]/30
-                           relative
-                           after:content-[''] after:absolute after:inset-1
-                           after:rounded-full after:bg-gradient-to-br
-                           after:from-[#f8c20b]/20 after:to-transparent"
+                  className="w-11 h-11 rounded-sm bg-[#232c39] shadow-md
+                           border border-[#8ac0d9]/40 group relative
+                           hover:bg-[#232c39]/80 active:shadow-inner
+                           transition-all duration-200"
                   aria-label="Reset"
-                />
-                <span className="text-[#7c7c7c] text-[10px] font-mono mt-1">RESET</span>
+                >
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-6 h-6 flex items-center justify-center">
+                      <div className="w-4 h-1 bg-[#8ac0d9] group-hover:rotate-90 transition-transform"></div>
+                    </div>
+                  </div>
+                </button>
+                <span className="text-[#d9c6c7] text-[10px] font-mono">RESET</span>
               </div>
 
-              <div className="flex-1 space-y-3">
+              <div className="flex-1 space-y-2">
+                {/* Input simplificado */}
                 <Input
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
@@ -1141,27 +1060,29 @@ function GameboyInterface({
                     isFirstInteraction ? "Enter language..." : 
                     "Write your message..."
                   }
-                  className="w-full bg-[#040404]/80 text-[#f8c20b] border-[#545454]
-                           placeholder:text-[#7c7c7c] focus:border-[#f8c20b]
-                           rounded-lg px-3 py-2 text-sm"
+                  className="w-full bg-[#232c39] text-[#8ac0d9] border border-[#8ac0d9]/30
+                           placeholder:text-[#8a97b6]/50 focus:border-[#8ac0d9]
+                           rounded-sm px-3 py-2 text-sm shadow-inner"
                 />
+                
+                {/* Botón simplificado */}
                 <Button 
                   onClick={onSend} 
                   disabled={!message}
-                  className="w-full bg-gradient-to-r from-[#5d490d] to-[#f8c20b]
-                           hover:from-[#5d490d]/90 hover:to-[#f8c20b]/90
-                           disabled:from-[#545454] disabled:to-[#7c7c7c]
-                           text-[#040404] font-medium py-2 rounded-lg
-                           transition-all duration-200
-                           shadow-lg shadow-[#f8c20b]/20"
+                  className="w-full bg-[#232c39] hover:bg-[#232c39]/90
+                           text-[#8ac0d9] py-2 rounded-sm 
+                           border border-[#8ac0d9]/40
+                           disabled:opacity-50 disabled:border-[#8d7481]/30
+                           transition-all duration-200"
                 >
                   Send
                 </Button>
               </div>
             </div>
 
+            {/* Opciones de interacción */}
             {!isFirstInteraction && messageCount > 0 && messageCount < 7 && !disabled && (
-              <div className="bg-[#040404]/50 p-4 rounded-xl border border-[#545454]">
+              <div className="bg-[#232c39]/90 p-3 rounded-md border border-[#8d7481] shadow-inner">
                 <InteractionOptions 
                   onSelect={(option) => {
                     setMessage(option);
@@ -1197,25 +1118,17 @@ function InteractionOptions({
         <button
           key={option.code}
           onClick={() => onSelect(option.name)}
-          className={`
-            w-full
-            relative px-3 py-2 rounded-lg
-            bg-[#1a1812]/50 text-[#f8c20b]
-            transition-all duration-200
-            hover:bg-[#1a1812]/70
-            hover:shadow-lg hover:shadow-[#f8c20b]/20
-            border border-[#f8c20b]/30
-            text-[11px] font-medium
-            transform hover:scale-105
-            flex items-center justify-center
-            min-h-[3rem]
-            leading-tight
-          `}
+          className="w-full px-3 py-2 rounded-sm
+                   bg-[#232c39]/80 text-[#8ac0d9]
+                   hover:bg-[#232c39] hover:-translate-y-1
+                   border border-[#8ac0d9]/30
+                   text-[11px] font-medium leading-tight
+                   min-h-[3rem] transition-all duration-200
+                   flex items-center justify-center"
         >
-          <span className="relative z-10 text-center px-1">
+          <span className="text-center">
             {option.name}
           </span>
-          <div className="absolute inset-0 bg-gradient-to-r from-[#f8c20b]/0 via-[#f8c20b]/5 to-[#f8c20b]/0 rounded-lg" />
         </button>
       ))}
     </div>
@@ -1232,20 +1145,20 @@ function MenuButton({ isOpen, onClick, className = "" }: {
       onClick={onClick}
       className={`
         z-50
-        rounded-lg
-        bg-[#1a1812]/50 
-        hover:bg-[#1a1812]/70
-        border border-[#f8c20b]/30
+        rounded-sm
+        bg-[#232c39]/90 
+        hover:bg-[#232c39]
+        border border-[#8ac0d9]/30
         flex flex-col items-center justify-center
         gap-1.5 p-2.5
         transition-all duration-200
-        ${isOpen ? 'bg-[#1a1812]/70' : ''}
+        ${isOpen ? 'bg-[#232c39]' : ''}
         ${className}
       `}
     >
-      <div className={`w-full h-[2px] bg-[#f8c20b] transition-all duration-200 ${isOpen ? 'rotate-45 translate-y-[7px]' : ''}`} />
-      <div className={`w-full h-[2px] bg-[#f8c20b] transition-all duration-200 ${isOpen ? 'opacity-0' : ''}`} />
-      <div className={`w-full h-[2px] bg-[#f8c20b] transition-all duration-200 ${isOpen ? '-rotate-45 -translate-y-[7px]' : ''}`} />
+      <div className={`w-full h-[2px] bg-[#8ac0d9] transition-all duration-200 ${isOpen ? 'rotate-45 translate-y-[7px]' : ''}`} />
+      <div className={`w-full h-[2px] bg-[#8ac0d9] transition-all duration-200 ${isOpen ? 'opacity-0' : ''}`} />
+      <div className={`w-full h-[2px] bg-[#8ac0d9] transition-all duration-200 ${isOpen ? '-rotate-45 -translate-y-[7px]' : ''}`} />
     </button>
   );
 }
@@ -1272,13 +1185,14 @@ function Menu({
   return (
     <div className={`
       absolute top-0 right-0 z-40
-      w-48 bg-[#1a1812]/95 rounded-lg
-      border border-[#f8c20b]/30
+      w-48 bg-[#232c39]/95 rounded-sm
+      border border-[#8ac0d9]/30
       transform transition-all duration-200
       ${isOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}
       overflow-hidden
       select-none
       pointer-events-auto
+      shadow-md shadow-[#232c39]/50
       ${className}
     `}>
       <div className="p-2 space-y-1">
@@ -1287,7 +1201,8 @@ function Menu({
             onShowCredits();
             onClose();
           }}
-          className="w-full text-left px-3 py-2 text-[#f8c20b] hover:bg-[#f8c20b]/10 rounded-lg text-sm select-none"
+          className="w-full text-left px-3 py-2 text-[#8ac0d9] hover:bg-[#455464]/50 rounded-sm text-sm select-none
+                   border-l-2 border-transparent hover:border-[#8ac0d9]/40 transition-colors"
         >
           Credits
         </button>
@@ -1298,7 +1213,8 @@ function Menu({
               onChangeWorld();
               onClose();
             }}
-            className="w-full text-left px-3 py-2 text-[#f8c20b] hover:bg-[#f8c20b]/10 rounded-lg text-sm select-none"
+            className="w-full text-left px-3 py-2 text-[#8ac0d9] hover:bg-[#455464]/50 rounded-sm text-sm select-none
+                     border-l-2 border-transparent hover:border-[#8ac0d9]/40 transition-colors"
           >
             Change the World
           </button>
@@ -1310,7 +1226,8 @@ function Menu({
               onShowProposal();
               onClose();
             }}
-            className="w-full text-left px-3 py-2 text-[#f8c20b] hover:bg-[#f8c20b]/10 rounded-lg text-sm select-none"
+            className="w-full text-left px-3 py-2 text-[#8ac0d9] hover:bg-[#455464]/50 rounded-sm text-sm select-none
+                     border-l-2 border-transparent hover:border-[#8ac0d9]/40 transition-colors"
           >
             Send Proposal
           </button>

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuthToken } from '../../utils/auth';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8080';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8081';
 
 export async function GET() {
   try {
