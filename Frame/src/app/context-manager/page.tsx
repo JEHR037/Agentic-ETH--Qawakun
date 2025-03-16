@@ -46,7 +46,7 @@ const sections: ContextSection[] = [
   },
   {
     type: 'laws',
-    title: 'Laws of the Worlds',
+    title: 'AI Parameters - Do and Do nots',
     placeholder: 'Define the rules and laws that govern this world...'
   },
   {

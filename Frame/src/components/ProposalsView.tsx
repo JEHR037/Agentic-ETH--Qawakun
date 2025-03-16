@@ -61,20 +61,20 @@ export default function ProposalsView({ hasClaimed = true }: Props) {
   };
   
   const handleVote = async (proposal: Proposal) => {
-    // Limpiar mensajes anteriores
+    // Clear previous messages
     setVoteSuccess(null);
     setVoteError(null);
     
-    // Verificar si el usuario está autenticado
+    // Check if user is authenticated
     if (!authenticated || !user?.wallet?.address) {
-      setVoteError('Por favor conecta tu wallet para votar');
+      setVoteError('Please connect your wallet to vote');
       login();
       return;
     }
     
-    // Verificar si el usuario ya ha votado esta propuesta
+    // Check if user has already voted
     if (proposal.voters?.includes(user.wallet.address)) {
-      setVoteError('Ya has votado por esta propuesta');
+      setVoteError('You have already voted for this proposal');
       return;
     }
     
@@ -95,36 +95,44 @@ export default function ProposalsView({ hasClaimed = true }: Props) {
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.error || data.details || 'Error al procesar el voto');
+        throw new Error(data.error || data.details || 'Error processing vote');
       }
       
-      // Mostrar mensaje de éxito
-      setVoteSuccess('¡Voto registrado! Iniciando proceso de minteo de NFT...');
+      // Show immediate success message
+      setVoteSuccess('Vote registered! Starting NFT minting process...');
       
-      // Similar a Demo.tsx, esperar para dar tiempo al proceso de minteo
-      // El minteo puede tardar hasta 3 segundos (3000ms)
+      // Similar to Demo.tsx, wait for minting process
+      // Minting can take up to 3 seconds (3000ms)
       setTimeout(async () => {
         try {
-          // Recargar propuestas para actualizar los contadores
+          // Reload proposals to update counters
           await loadProposals();
           
-          // Actualizar mensaje
-          setVoteSuccess('¡NFT minteado exitosamente! Gracias por tu voto.');
+          // Update success message
+          setVoteSuccess('NFT minted successfully! Thank you for your vote.');
           
-          // Cerrar el modal después de un tiempo adicional para que el usuario vea el mensaje
+          // Close modal after additional time for user to see message
           setTimeout(() => {
             setSelectedProposal(null);
             setVoteSuccess(null);
-          }, 3000);
+          }, 5000);
         } catch (error) {
-          console.error('Error al recargar propuestas:', error);
-          // No mostrar este error al usuario ya que el voto fue exitoso
+          console.error('Error reloading proposals:', error);
+          // Keep success message even if reload fails
+          setTimeout(() => {
+            setSelectedProposal(null);
+            setVoteSuccess(null);
+          }, 5000);
         }
       }, 3000);
       
     } catch (error) {
-      console.error('Error al votar:', error);
-      setVoteError(error instanceof Error ? error.message : 'Error al procesar el voto');
+      console.error('Error voting:', error);
+      setVoteError(error instanceof Error ? error.message : 'Error processing vote');
+      // Keep error message visible for 5 seconds
+      setTimeout(() => {
+        setVoteError(null);
+      }, 5000);
     } finally {
       setIsVoting(false);
     }
@@ -157,7 +165,7 @@ export default function ProposalsView({ hasClaimed = true }: Props) {
   if (proposals.length === 0) {
     return (
       <div className="text-center p-10">
-        <p className="text-[#f8c20b]/80 text-xl">No hay propuestas en fase de votación</p>
+        <p className="text-[#f8c20b]/80 text-xl">No proposals in voting phase</p>
       </div>
     );
   }
@@ -327,10 +335,18 @@ export default function ProposalsView({ hasClaimed = true }: Props) {
 
             {/* Mostrar mensajes de error o éxito */}
             {(voteSuccess || voteError) && (
-              <div className={`mx-6 lg:mx-8 my-4 p-4 rounded-lg ${
-                voteSuccess ? 'bg-green-900/50 text-green-200' : 'bg-red-900/50 text-red-200'
-              }`}>
-                {voteSuccess || voteError}
+              <div className={`
+                mx-6 lg:mx-8 my-4 p-4 rounded-lg
+                ${voteSuccess 
+                  ? 'bg-green-900/50 text-green-200 border border-green-500/30' 
+                  : 'bg-red-900/50 text-red-200 border border-red-500/30'}
+                flex items-center gap-3
+                animate-fadeIn
+              `}>
+                <span className={`text-xl ${voteSuccess ? 'text-green-400' : 'text-red-400'}`}>
+                  {voteSuccess ? '✓' : '✕'}
+                </span>
+                <p className="flex-1">{voteSuccess || voteError}</p>
               </div>
             )}
 
@@ -351,12 +367,12 @@ export default function ProposalsView({ hasClaimed = true }: Props) {
                 {isVoting ? (
                   <div className="flex items-center justify-center">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black mr-2"></div>
-                    Procesando...
+                    Processing...
                   </div>
                 ) : authenticated ? (
-                  'Votar por esta propuesta'
+                  'Vote for this proposal'
                 ) : (
-                  'Conectar para votar'
+                  'Connect to vote'
                 )}
               </Button>
             </div>

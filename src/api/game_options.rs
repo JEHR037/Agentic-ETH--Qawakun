@@ -46,7 +46,7 @@ pub async fn handle_game_options_get(
 
     // Intentar obtener las opciones de juego de Redis
     let options_str: Option<String> = match redis::cmd("GET")
-        .arg("game_options")
+        .arg("game_options1")
         .query_async(&mut con)
         .await {
         Ok(result) => result,
@@ -75,7 +75,7 @@ pub async fn handle_game_options_get(
                 options_str => {
                     // También guardarlas en Redis para futuras peticiones
                     match redis::cmd("SET")
-                        .arg("game_options")
+                        .arg("game_options1")
                         .arg(options_str)
                         .query_async::<_, ()>(&mut con)
                         .await {
@@ -127,7 +127,7 @@ pub async fn handle_game_options_set(
 
     // Guardar en Redis
     match redis::cmd("SET")
-        .arg("game_options")
+        .arg("game_options1")
         .arg(&options_json)
         .query_async::<_, ()>(&mut con)
         .await {

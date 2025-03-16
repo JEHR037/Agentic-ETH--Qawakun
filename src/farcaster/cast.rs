@@ -248,7 +248,7 @@ impl CastClient {
         let api_key = env::var("OPENAI_API_KEY")
             .map_err(|e| anyhow::anyhow!("Failed to get OPENAI_API_KEY: {}", e))?;
         let context = std::fs::read_to_string("context1.md")
-            .map_err(|e| anyhow::anyhow!("Failed to read context.md: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to read context1.md: {}", e))?;
 
         let response = handle_conversation(
             &self.redis_client,

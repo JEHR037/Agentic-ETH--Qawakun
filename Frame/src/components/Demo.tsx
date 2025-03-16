@@ -41,7 +41,7 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { data: session } = useSession();
-  const { authenticated, login, user } = usePrivy();
+  const { authenticated, login, user, logout } = usePrivy();
   const { wallets } = useWallets();
   const router = useRouter();
   
@@ -422,13 +422,10 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
                 setFreeChatMessages={setFreeChatMessages}
                 isMenuOpen={isMenuOpen}
                 setIsMenuOpen={setIsMenuOpen}
-                showCreditsModal={showCreditsModal}
                 setShowCreditsModal={setShowCreditsModal}
-                showProposalModal={showProposalModal}
                 setShowProposalModal={setShowProposalModal}
-                hasActiveProposal={hasActiveProposal}
-                setHasActiveProposal={setHasActiveProposal}
                 onChangeWorld={handleChangeWorld}
+                logout={logout}
               />
             )}
           </div>
@@ -575,7 +572,7 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
                   <option value="">Select a type...</option>
                   <option value="WORLD">World Building</option>
                   <option value="CHARACTERS">Characters</option>
-                  <option value="LAWS">Laws of World</option>
+                  <option value="LAWS">Events</option>
                 </select>
               </div>
 
@@ -618,7 +615,7 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
                   className="w-full bg-[#040404]/80 text-[#f8c20b] border-[#545454]
                            placeholder:text-[#7c7c7c] focus:border-[#f8c20b]
                            rounded-lg px-3 py-2"
-                  placeholder="How can we contact you? (Discord, Twitter, etc.)"
+                  placeholder="How can we contact you? (Farcaster, X, Telegram, Discord...)"
                 />
               </div>
 
@@ -795,7 +792,7 @@ function LanguageSelector({ onSelect }: { onSelect: (lang: string) => void }) {
   );
 }
 
-function GameboyInterface({ 
+function GameboyInterface({
   message, 
   setMessage, 
   onSend,
@@ -814,12 +811,17 @@ function GameboyInterface({
   selectedLanguage,
   setSelectedLanguage,
   isFreeChat,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  setIsFreeChat: _,
   freeChatMessages,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  setFreeChatMessages: __,
   isMenuOpen,
   setIsMenuOpen,
   setShowCreditsModal,
   setShowProposalModal,
   onChangeWorld,
+  logout,
 }: {
   message: string;
   setMessage: (value: string) => void;
@@ -844,13 +846,10 @@ function GameboyInterface({
   setFreeChatMessages: (value: number) => void;
   isMenuOpen: boolean;
   setIsMenuOpen: (value: boolean) => void;
-  showCreditsModal: boolean;
   setShowCreditsModal: (value: boolean) => void;
-  showProposalModal: boolean;
   setShowProposalModal: (value: boolean) => void;
-  hasActiveProposal: boolean;
-  setHasActiveProposal: (value: boolean) => void;
   onChangeWorld: () => void;
+  logout: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -887,25 +886,25 @@ function GameboyInterface({
 
   return (
     <div className="relative">
-      {(!isAuthenticated || disabled) && (
-        <div className="absolute -left-3 -top-3 w-8 h-8 z-50">
-          <div className="relative">
-            {/* Onda exterior */}
-            <div className="absolute inset-0 animate-ping">
-              <div className="w-full h-full bg-[#8ac0d9]/10 rounded-full"></div>
-            </div>
-            {/* Onda media */}
-            <div className="absolute inset-1 animate-pulse">
-              <div className="w-full h-full bg-[#8ac0d9]/20 rounded-full"></div>
-            </div>
-            {/* Punto central */}
-            <div className="absolute inset-2">
-              <div className="w-full h-full bg-[#8ac0d9] rounded-full shadow-lg shadow-[#8ac0d9]/30"></div>
-            </div>
-          </div>
+      {/* Botón independiente de logout para usuarios sin NFT pero autenticados */}
+      {isAuthenticated && !hasClaimed && (
+        <div className="absolute right-0 top-0 z-50">
+          <button
+            onClick={logout}
+            className="absolute top-8 -right-12 w-10 h-10
+                     bg-[#232c39]/90 hover:bg-[#232c39]
+                     border border-[#f85149]/40 rounded-sm
+                     flex items-center justify-center
+                     transition-all duration-200
+                     text-[#f85149] group"
+            title="Logout"
+          >
+            <span className="transform transition-transform group-hover:scale-110">🚪</span>
+          </button>
         </div>
       )}
 
+      {/* Menú para usuarios con NFT */}
       {hasClaimed && (
         <div className="absolute right-0 top-0 z-50">
           <MenuButton 
@@ -923,6 +922,7 @@ function GameboyInterface({
             onShowCredits={() => setShowCreditsModal(true)}
             onShowProposal={() => setShowProposalModal(true)}
             className="mt-32 -right-12"
+            onLogout={logout}
           />
         </div>
       )}
@@ -1238,7 +1238,8 @@ function Menu({
   freeChatMessages,
   onShowCredits,
   onShowProposal,
-  className = ""
+  className = "",
+  onLogout
 }: { 
   isOpen: boolean; 
   onClose: () => void;
@@ -1248,6 +1249,7 @@ function Menu({
   onShowCredits: () => void;
   onShowProposal: () => void;
   className?: string;
+  onLogout: () => void;
 }) {
   return (
     <div className={`
@@ -1277,16 +1279,33 @@ function Menu({
         </button>
         
         {isAuthenticated && (
-          <button
-            onClick={() => {
-              onChangeWorld();
-              onClose();
-            }}
-            className="w-full text-left px-3 py-2 text-[#8ac0d9] hover:bg-[#455464]/50 rounded-sm text-sm select-none
-                     border-l-2 border-transparent hover:border-[#8ac0d9]/40 transition-colors"
-          >
-            Change the World
-          </button>
+          <>
+            <button
+              onClick={() => {
+                onChangeWorld();
+                onClose();
+              }}
+              className="w-full text-left px-3 py-2 text-[#8ac0d9] hover:bg-[#455464]/50 rounded-sm text-sm select-none
+                       border-l-2 border-transparent hover:border-[#8ac0d9]/40 transition-colors
+                       flex items-center gap-2 group"
+            >
+              <span className="text-[#8ac0d9] group-hover:text-[#8ac0d9] transition-colors">💭</span>
+              <span>Explore more</span>
+            </button>
+
+            <button
+              onClick={() => {
+                onLogout();
+                onClose();
+              }}
+              className="w-full text-left px-3 py-2 text-[#f85149] hover:bg-[#455464]/50 rounded-sm text-sm select-none
+                       border-l-2 border-transparent hover:border-[#f85149]/40 transition-colors
+                       flex items-center gap-2 group"
+            >
+              <span className="text-[#f85149] group-hover:text-[#f85149] transition-colors">🚪</span>
+              <span>Logout</span>
+            </button>
+          </>
         )}
 
         {freeChatMessages >= 4 && (
