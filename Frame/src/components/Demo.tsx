@@ -8,10 +8,31 @@ import sdk, {
 } from "@farcaster/frame-sdk";
 import { Button } from "~/components/ui/Button";
 import { usePrivy, useWallets } from '@privy-io/react-auth';
-import gameOptions from '~/data/gameOptions.json';
 import ProposalsView from './ProposalsView';
 import { Proposal } from "~/types/interfaces";
 import { useRouter } from "next/navigation";
+import staticGameOptions from '~/data/gameOptions.json';
+
+// Primero definamos una interfaz para las opciones de juego
+interface GameOption {
+  code: string;
+  name: string;
+}
+
+interface GameInteraction {
+  id: number;
+  options: GameOption[];
+}
+
+interface GameLanguage {
+  code: string;
+  name: string;
+  interactions: GameInteraction[];
+}
+
+interface GameOptions {
+  languages: GameLanguage[];
+}
 
 export default function Demo({ title }: { title?: string } = { title: "Qawakun" }) {
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
@@ -47,6 +68,12 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
   
   const author = session?.user?.fid || wallets?.[0]?.address || "anonymous";
   const isAuthenticated = !!session || authenticated;
+
+  // Cambiamos el tipo any por la interfaz definida
+  const [gameOptions, setGameOptions] = useState<GameOptions>(staticGameOptions as GameOptions);
+  
+  // Podemos usar este estado para mostrar un indicador de carga mientras se obtienen las opciones
+  const [isLoadingOptions, setIsLoadingOptions] = useState(true);
 
   useEffect(() => {
     const load = async () => {
@@ -359,8 +386,46 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
     }
   };
 
+  // En el fetchGameOptions, aseguramos que los datos cumplen con nuestra interfaz
+  const fetchGameOptions = useCallback(async () => {
+    try {
+      setIsLoadingOptions(true);
+      
+      const response = await fetch('/api/game-options');
+      
+      if (!response.ok) {
+        console.warn('Error fetching game options from API, using static options:', await response.text());
+        return;
+      }
+      
+      const data = await response.json();
+      
+      // Verificamos la estructura de datos con nuestra interfaz
+      if (data && data.languages && Array.isArray(data.languages) && data.languages.length > 0) {
+        console.log('Using dynamic game options from Redis');
+        setGameOptions(data as GameOptions);
+      } else {
+        console.warn('Invalid data structure from API, using static options');
+      }
+    } catch (error) {
+      console.error('Error fetching game options, using static fallback:', error);
+    } finally {
+      setIsLoadingOptions(false);
+    }
+  }, []);
+
+  // Cargar las opciones de juego cuando el componente se monta
+  useEffect(() => {
+    fetchGameOptions();
+  }, [fetchGameOptions]);
+
   if (!isSDKLoaded) {
     return <div>Loading...</div>;
+  }
+
+  // Podemos mostrar un indicador de carga mientras se obtienen las opciones
+  if (isLoadingOptions && gameOptions.languages.length === 0) {
+    return <div>Loading game options...</div>;
   }
 
   return (
@@ -426,6 +491,7 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
                 setShowProposalModal={setShowProposalModal}
                 onChangeWorld={handleChangeWorld}
                 logout={logout}
+                gameOptions={gameOptions}
               />
             )}
           </div>
@@ -822,6 +888,7 @@ function GameboyInterface({
   setShowProposalModal,
   onChangeWorld,
   logout,
+  gameOptions,
 }: {
   message: string;
   setMessage: (value: string) => void;
@@ -850,6 +917,7 @@ function GameboyInterface({
   setShowProposalModal: (value: boolean) => void;
   onChangeWorld: () => void;
   logout: () => void;
+  gameOptions: GameOptions;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -1157,6 +1225,7 @@ function GameboyInterface({
                   }}
                   messageCount={messageCount}
                   selectedLanguage={selectedLanguage}
+                  gameOptions={gameOptions}
                 />
               </div>
             )}
@@ -1170,14 +1239,16 @@ function GameboyInterface({
 function InteractionOptions({ 
   onSelect, 
   messageCount, 
-  selectedLanguage 
+  selectedLanguage,
+  gameOptions
 }: { 
   onSelect: (option: string) => void;
   messageCount: number;
   selectedLanguage: string;
+  gameOptions: GameOptions;
 }) {
   const language = gameOptions.languages.find(lang => lang.code === selectedLanguage);
-  const currentOptions = language?.interactions[messageCount - 1]?.options || [];
+  const currentOptions = language?.interactions?.[messageCount - 1]?.options || [];
 
   return (
     <div className="grid grid-cols-3 gap-3 w-full select-none">
