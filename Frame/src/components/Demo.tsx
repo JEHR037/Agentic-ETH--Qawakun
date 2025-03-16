@@ -512,7 +512,7 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
             </div>
           )}
 
-          {messageCount >= 6 && !hasClaimed && (
+          {messageCount >= 7 && !hasClaimed && (
             <Button
               onClick={handleNFTClaim}
               className="w-full mt-4 bg-gradient-to-r from-[#f8d54b] to-[#8b7435]
