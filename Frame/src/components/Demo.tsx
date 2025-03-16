@@ -527,7 +527,7 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
               Credits
             </h2>
             <div className="text-[#f8c20b]/90 space-y-4 mb-6 select-none">
-              <p>Created by the Qawakun Team</p>
+              <p>Created by the LUM TEAM</p>
               <p>Special thanks to:</p>
               <ul className="list-disc list-inside pl-4">
                 <li>The Farcaster Community</li>
@@ -539,7 +539,9 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
               <Button
                 onClick={() => setShowCreditsModal(false)}
                 className="bg-[#f8c20b] text-[#040404] px-8 py-2 rounded-lg
-                          hover:bg-[#f8c20b]/90 transition-colors"
+                          hover:bg-[#f8c20b]/90 transition-colors
+                          shadow-md hover:shadow-lg transform hover:-translate-y-0.5
+                          font-medium border border-[#f8c20b]/30"
               >
                 Close
               </Button>
@@ -671,28 +673,93 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
 function TypewriterText({ text }: { text: string }) {
   const [displayedText, setDisplayedText] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentPage, setCurrentPage] = useState(0);
+  const charactersPerPage = 180; // Ajustar según necesidad
+  
+  // Dividir el texto en páginas
+  const pages = useMemo(() => {
+    const result = [];
+    for (let i = 0; i < text.length; i += charactersPerPage) {
+      result.push(text.substring(i, i + charactersPerPage));
+    }
+    return result;
+  }, [text]);
+
+  // Texto a mostrar en la página actual
+  const currentPageText = useMemo(() => 
+    pages[currentPage] || '', 
+  [pages, currentPage]);
 
   useEffect(() => {
     setDisplayedText('');
     setCurrentIndex(0);
+    setCurrentPage(0);
   }, [text]);
 
   useEffect(() => {
-    if (currentIndex < text.length) {
+    if (currentIndex < currentPageText.length) {
       const timeout = setTimeout(() => {
-        setDisplayedText(prev => prev + text[currentIndex]);
+        setDisplayedText(prev => prev + currentPageText[currentIndex]);
         setCurrentIndex(prev => prev + 1);
       }, 30); // ajustar velocidad según necesidad
 
       return () => clearTimeout(timeout);
     }
-  }, [currentIndex, text]);
+  }, [currentIndex, currentPageText]);
+
+  const goToNextPage = () => {
+    if (currentPage < pages.length - 1) {
+      setCurrentPage(prev => prev + 1);
+      setCurrentIndex(0);
+      setDisplayedText('');
+    }
+  };
+
+  const goToPrevPage = () => {
+    if (currentPage > 0) {
+      setCurrentPage(prev => prev - 1);
+      setCurrentIndex(0);
+      setDisplayedText('');
+    }
+  };
 
   return (
-    <div className="inline-block text-[#8ac0d9] whitespace-pre-wrap break-words">
-      {displayedText}
-      {currentIndex < text.length && (
-        <span className="animate-pulse">▮</span>
+    <div className="flex flex-col h-full justify-between">
+      <div className="inline-block text-[#8ac0d9] whitespace-pre-wrap break-words pt-5">
+        {displayedText}
+        {currentIndex < currentPageText.length && (
+          <span className="animate-pulse">▮</span>
+        )}
+      </div>
+      
+      {pages.length > 1 && (
+        <div className="mt-4 flex justify-between items-center">
+          <button 
+            onClick={goToPrevPage} 
+            disabled={currentPage === 0}
+            className={`px-3 py-1 rounded-sm text-xs font-medium transition-all
+                      ${currentPage === 0 
+                        ? 'text-[#8ac0d9]/30 cursor-not-allowed' 
+                        : 'text-[#8ac0d9] bg-[#232c39]/80 hover:bg-[#232c39] border border-[#8ac0d9]/30'}`}
+          >
+            ← Anterior
+          </button>
+          
+          <span className="text-xs text-[#8ac0d9]/70">
+            {currentPage + 1} / {pages.length}
+          </span>
+          
+          <button 
+            onClick={goToNextPage} 
+            disabled={currentPage >= pages.length - 1 || currentIndex < currentPageText.length}
+            className={`px-3 py-1 rounded-sm text-xs font-medium transition-all
+                      ${(currentPage >= pages.length - 1 || currentIndex < currentPageText.length)
+                        ? 'text-[#8ac0d9]/30 cursor-not-allowed' 
+                        : 'text-[#8ac0d9] bg-[#232c39]/80 hover:bg-[#232c39] border border-[#8ac0d9]/30'}`}
+          >
+            Siguiente →
+          </button>
+        </div>
       )}
     </div>
   );
@@ -700,7 +767,7 @@ function TypewriterText({ text }: { text: string }) {
 
 function LanguageSelector({ onSelect }: { onSelect: (lang: string) => void }) {
   return (
-    <div className="flex flex-col gap-4 max-w-[250px] mx-auto">
+    <div className="flex flex-col gap-4 max-w-[250px] mx-auto my-auto">
       <button 
         onClick={() => onSelect('es')}
         className="px-6 py-3 bg-[#232c39]/80 hover:bg-[#232c39] 
@@ -962,7 +1029,7 @@ function GameboyInterface({
               </div>
 
               <div className="relative z-40 h-full flex items-center justify-center p-4">
-                <div className="w-full max-h-full overflow-hidden">
+                <div className="w-full h-full flex flex-col justify-center">
                   {isFirstInteraction ? (
                     isAuthenticated && !disabled ? (
                       <LanguageSelector 
@@ -1017,7 +1084,7 @@ function GameboyInterface({
                       </span>
                     )
                   ) : (
-                    <div className="font-mono text-[#f8c20b] text-center">
+                    <div className="font-mono text-[#8ac0d9] text-center h-full flex flex-col">
                       <TypewriterText text={apiResponse} />
                     </div>
                   )}
@@ -1202,9 +1269,11 @@ function Menu({
             onClose();
           }}
           className="w-full text-left px-3 py-2 text-[#8ac0d9] hover:bg-[#455464]/50 rounded-sm text-sm select-none
-                   border-l-2 border-transparent hover:border-[#8ac0d9]/40 transition-colors"
+                   border-l-2 border-transparent hover:border-[#8ac0d9]/40 transition-colors
+                   flex items-center gap-2 group"
         >
-          Credits
+          <span className="text-[#8ac0d9] group-hover:text-[#8ac0d9] transition-colors">✧</span>
+          <span>Credits</span>
         </button>
         
         {isAuthenticated && (
