@@ -17,7 +17,7 @@ export function Providers({ session, children }: { session: Session | null, chil
           embeddedWallets: {
             createOnLogin: 'users-without-wallets',
           },
-          loginMethods: ['email', 'wallet', 'google', 'farcaster'],
+          loginMethods: ['email', 'wallet', 'google', 'farcaster','passkey'],
         }}
       >
         {children}
