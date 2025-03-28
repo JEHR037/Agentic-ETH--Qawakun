@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     description: "Engage with the Lumen Frame interactive experience and claim your personalized NFT. A new narrative adventure.",
     images: [
       {
-        url: "/container11.jpg",
+        url: "Frame/public/container11.jpg",
         width: 1200,
         height: 630,
         alt: "Lumen Frame",
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Lumen Frame",
     description: "Explore the Lumen Frame experience and get your soul NFT",
-    images: ["/container11.jpg"],
+    images: ["Frame/public/container11.jpg"],
   },
 };
 
