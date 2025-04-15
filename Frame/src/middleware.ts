@@ -8,10 +8,11 @@ export function middleware(request: NextRequest) {
   
   // Verificar si es una ruta de API (excepto las específicamente permitidas para acceso externo)
   if (pathname.startsWith('/api/') && 
-      !pathname.startsWith('/api/webhook') && 
-      !pathname.startsWith('/api/interactive') &&
-      !pathname.startsWith('/api/proposal/vote')) {
-    
+  !pathname.startsWith('/api/proposal/vote') && 
+  !pathname.startsWith('/api/context') && 
+  !pathname.startsWith('/api/nft-claim') &&
+  !pathname.startsWith('/api/game-options')&& 
+  !pathname.startsWith('/api/interactive')) {
     // Verificar el origen (referrer)
     const referer = request.headers.get('referer') || '';
     const host = request.headers.get('host') || '';
