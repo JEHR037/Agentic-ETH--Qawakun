@@ -12,7 +12,7 @@ const frame = {
       type: "launch_frame",
       name: "Lumen",
       url: appUrl,
-      splashImageUrl: `${appUrl}/splash.jpg`,
+      splashImageUrl: `${appUrl}/splash.webp`,
       splashBackgroundColor: "#f7f7f7",
     },
   },
