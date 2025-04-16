@@ -11,7 +11,7 @@ export async function GET() {
     },
     frame: {
       version: "1",
-      name: "Qawakun",
+      name: "Lumen",
       iconUrl: `${appUrl}/icon.png`,
       homeUrl: appUrl,
       imageUrl: `${appUrl}/frames/hello/opengraph-image`,

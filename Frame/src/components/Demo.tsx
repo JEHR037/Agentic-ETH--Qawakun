@@ -33,7 +33,7 @@ interface GameOptions {
   languages: GameLanguage[];
 }
 
-export default function Demo({ title }: { title?: string } = { title: "Qawakun" }) {
+export default function Demo({ title }: { title?: string } = { title: "Lumen" }) {
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
   const [context, setContext] = useState<Context.FrameContext>();
   const [message, setMessage] = useState("");
@@ -253,7 +253,7 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
 
       setHasClaimed(true);
       setShowSuccessModal(true);
-      setApiResponse("Congratulations! You have obtained your Qawakun. Take care of it and stay connected to the Ankanet!");
+      setApiResponse("Congratulations! You have obtained your Lumen Nft. Take care of it and stay connected to the Ankanet!");
       handleReset();
     } catch (error) {
       setApiResponse("Error claiming NFT. Please try again."+error);
@@ -562,7 +562,7 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
               ¡Congratulations!
             </h2>
             <p className="text-[#f8c20b]/90 mb-6">
-              You have successfully claimed your Qawakun NFT! 
+              You have successfully claimed your Lumen NFT! 
               Take care of it and stay connected to the Ankanet.
             </p>
             <Button
