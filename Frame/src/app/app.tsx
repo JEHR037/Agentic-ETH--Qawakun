@@ -7,7 +7,7 @@ const Demo = dynamic(() => import("~/components/Demo"), {
 });
 
 export default function App(
-  { title }: { title?: string } = { title: "Qawakun" }
+  { title }: { title?: string } = { title: "Lumen Frame" }
 ) {
   return <Demo title={title} />;
 }

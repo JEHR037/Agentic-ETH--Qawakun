@@ -13,7 +13,6 @@ import { Proposal } from "~/types/interfaces";
 import { useRouter } from "next/navigation";
 import staticGameOptions from '~/data/gameOptions.json';
 
-// Primero definamos una interfaz para las opciones de juego
 interface GameOption {
   code: string;
   name: string;
@@ -306,7 +305,6 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
     }
   };
 
-  // Asegurarnos de que author sea siempre string
   const authorString = typeof author === 'number' ? author.toString() : author;
 
   useEffect(() => {
@@ -317,7 +315,6 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
     }
   }, [user]);
 
-  // Función para manejar el envío de propuestas
   const handleProposalSubmit = async () => {
     console.log("Proposal submit clicked", proposalData);
     
@@ -358,7 +355,6 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
         return;
       }
 
-      // Restablecer los datos de la propuesta
       setProposalData({
         type: '',
         description: '',
@@ -370,10 +366,9 @@ export default function Demo({ title }: { title?: string } = { title: "Qawakun" 
       setShowProposalModal(false);
       setApiResponse("🎉 Congratulations! Your proposal has been submitted successfully!");
       
-      // Marcar como propuesta activa
       setHasActiveProposal(true);
 
-      // Esperar 2 segundos antes de redirigir
+
       setTimeout(() => {
         router.push('/');
       }, 2000);

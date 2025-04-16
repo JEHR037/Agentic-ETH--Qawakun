@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getSession } from "~/auth"
 import "~/app/globals.css";
 import { Providers } from "~/app/providers";
+import { GoogleTagManager } from '@next/third-parties/google'
 
 export const metadata: Metadata = {
   title: "Lumen Frame",
@@ -39,8 +40,11 @@ export default async function RootLayout({
   
   return (
     <html lang="en">
+      <head>
+      </head>
       <body>
         <Providers session={session}>{children}</Providers>
+        <GoogleTagManager gtmId="G-HY810NX7GK" />
       </body>
     </html>
   );
