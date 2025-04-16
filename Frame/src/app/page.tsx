@@ -7,10 +7,10 @@ const frame = {
   version: "next",
   imageUrl: `${appUrl}/opengraph-image`,
   button: {
-    title: "Launch Frame",
+    title: "Launch",
     action: {
       type: "launch_frame",
-      name: "Lumen Frame",
+      name: "Lumen",
       url: appUrl,
       splashImageUrl: `${appUrl}/splash.jpg`,
       splashBackgroundColor: "#f7f7f7",
@@ -22,10 +22,10 @@ export const revalidate = 300;
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Lumen Frame",
+    title: "Lumen",
     openGraph: {
-      title: "Lumen Frame",
-      description: "A Lumen Frame app.",
+      title: "Lumen miniapp",
+      description: "A Lumen Miniapp to start to rebuild the future",
     },
     other: {
       "fc:frame": JSON.stringify(frame),
