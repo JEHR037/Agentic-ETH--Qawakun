@@ -182,13 +182,11 @@ function App() {
 
       {/* Modal */}
       <CustomModal isOpen={isModalOpen} onRequestClose={() => setIsModalOpen(false)}>
-        <div className="relative z-50">
           <iframe 
             src="https://paragraph.com/@luminous/subscribe" 
             title="Rebuild Modal" 
             className="w-full h-full" 
           />
-        </div>
       </CustomModal>
     </div>
   );
