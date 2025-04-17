@@ -12,6 +12,7 @@ import ProposalsView from './ProposalsView';
 import { Proposal } from "~/types/interfaces";
 import { useRouter } from "next/navigation";
 import staticGameOptions from '~/data/gameOptions.json';
+import { sendGAEvent } from '@next/third-parties/google';
 
 interface GameOption {
   code: string;
@@ -89,6 +90,10 @@ export default function Demo({ title }: { title?: string } = { title: "Lumen" })
       };
     }
   }, [isSDKLoaded]);
+
+  useEffect(() => {
+    sendGAEvent('event', 'pageLoad', { value: 'DemoLoaded' });
+  }, []);
 
   const checkClaim = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -203,6 +208,7 @@ export default function Demo({ title }: { title?: string } = { title: "Lumen" })
       }
       
       setIsFirstInteraction(false);
+      sendGAEvent('event', 'messageSent', { value: message });
     } catch (err) {
       console.warn('Error sending message:', err);
       setApiResponse("Error processing request");
@@ -255,6 +261,7 @@ export default function Demo({ title }: { title?: string } = { title: "Lumen" })
       setShowSuccessModal(true);
       setApiResponse("Congratulations! You have obtained your Lumen Nft. Take care of it and stay connected to the Ankanet!");
       handleReset();
+      sendGAEvent('event', 'nftClaimed', { value: author });
     } catch (error) {
       setApiResponse("Error claiming NFT. Please try again."+error);
     } finally {
@@ -373,6 +380,8 @@ export default function Demo({ title }: { title?: string } = { title: "Lumen" })
         router.push('/');
       }, 2000);
 
+      sendGAEvent('event', 'proposalSubmitted', { value: proposalData });
+
     } catch (err) {
       console.error('Error submitting proposal:', err);
       setApiResponse("Error submitting proposal. Please try again.");
@@ -439,7 +448,10 @@ export default function Demo({ title }: { title?: string } = { title: "Lumen" })
 
           <div className="relative">
             <button
-              onClick={() => setShowProposalsView(!showProposalsView)}
+              onClick={() => {
+                setShowProposalsView(!showProposalsView);
+                sendGAEvent('event', 'viewProposals', { value: showProposalsView });
+              }}
               className={`absolute -left-12 top-8 w-10 h-10
                          bg-[#1a1812]/50 hover:bg-[#1a1812]/70
                          border border-[#f8c20b]/30 rounded-lg
@@ -536,7 +548,10 @@ export default function Demo({ title }: { title?: string } = { title: "Lumen" })
           {/* Botón para Make a Proposal */}
           {isFreeChat && freeChatMessages >= 4 && (
             <Button
-              onClick={() => setShowProposalModal(true)}
+              onClick={() => {
+                setShowProposalModal(true);
+                sendGAEvent('event', 'makeProposal', { value: 'ProposalButtonClicked' });
+              }}
               disabled={!hasClaimed}
               className={`w-full mt-4 bg-gradient-to-r from-[#f8d54b] to-[#8b7435]
                          hover:from-[#f8d54b]/80 hover:to-[#8b7435]/80
